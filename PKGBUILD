@@ -1,6 +1,6 @@
 # Maintainer: TJ Vanderpoel <tj@rubyists.com>
 pkgname=sv-helper
-pkgver=0.12
+pkgver=0.22
 pkgrel=1
 pkgdesc="Helpers to make using runit-run-git or runit-dietlibc easier to use"
 arch=(i686 x86_64)
