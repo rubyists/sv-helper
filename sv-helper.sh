@@ -77,20 +77,31 @@ function list {
 }
 
 # Usage
-funcion usage {
+function usage {
   cmd=$1
   case "$cmd" in
     sv-enable) echo "sv-enable <service> - Enable a service and start it (will restart on boots)";;
-    sv-disable) "sv-disable <service> - Disable a service from starting (also stop the service)"
-    svls) echo "sv-list [<service>] - Show list of services (Default: all services, pass a service name to see just one)";;
+    sv-disable) echo "sv-disable <service> - Disable a service from starting (also stop the service)";;
+    svls) echo "svls [<service>] - Show list of services (Default: all services, pass a service name to see just one)";;
     sv-find) echo "sv-find <service> - Find a service, if it exists";;
     sv-list) echo "sv-list - List available services";;
-    *) "Invalid command (sv-list svls sv-find sv-enable sv-disable)";;
+    *) echo "Invalid command (sv-list svls sv-find sv-enable sv-disable)";;
   esac
 }
 
 # Start main program
+
 cmd=$(basename $0) # Get the command
+
+# help
+while getopts h options
+do
+  case $options in
+    h) echo $(usage $cmd)
+       exit;;
+  esac
+done
+
 case "$cmd" in
   sv-enable) enable $@;;
   sv-disable) disable $@;;

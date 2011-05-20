@@ -1,6 +1,6 @@
 # Maintainer: TJ Vanderpoel <tj@rubyists.com>
 pkgname=sv-helper
-pkgver=0.22
+pkgver=0.62
 pkgrel=1
 pkgdesc="Helpers to make using runit-run-git or runit-dietlibc easier to use"
 arch=(i686 x86_64)
@@ -9,7 +9,7 @@ license=('MIT')
 depends=('runit-dietlibc')
 optdepends=('runit-services-git: for a variety of pre-made services' 'runit-run-git: to boot with runit as a pid 1 replacement')
 source=(sv-helper.sh)
-md5sums=('f15e1cbc3131d8e67949d17691c7ec5f')
+md5sums=('4e4fd427732bc47aca30e912258ccf16')
 
 package() {
   install -D -m 0755 sv-helper.sh "$pkgdir/usr/bin/sv-helper"
