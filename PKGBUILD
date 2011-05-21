@@ -10,7 +10,7 @@ depends=('runit-dietlibc')
 optdepends=('runit-services-git: for a variety of pre-made services' 'runit-run-git: to boot with runit as a pid 1 replacement')
 source=(sv-helper.sh README.md)
 md5sums=('4e4fd427732bc47aca30e912258ccf16'
-         'ed1b994b9c0c523ca2c3443dbf46e2a0')
+         '415fd25f146edc186c21a902a1fb7e15')
 
 package() {
   install -D -m 0755 sv-helper.sh "$pkgdir/usr/bin/sv-helper"
