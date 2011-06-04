@@ -92,8 +92,8 @@ function array_optparse {
 # }}}
 
 case $cmd in
-  export_array) array_optparse $@;export_array $_optparse;;
-  print_array) array_optparse $@;print_array $_optparse;;
+  export_array) array_optparse $@;export_array $_optargs;;
+  print_array) array_optparse $@;print_array $_optargs;;
   export_arrays) array_optparse $@;export_arrays $_optargs;;
   print_arrays) array_optparse $@;print_arrays $_optargs;;
   *) echo "Invalid command '$cmd'!"
