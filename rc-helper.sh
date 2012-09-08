@@ -63,9 +63,9 @@ function print_arrays {
         for(oidx in vals) {
           if(oidx ~ n) printf vals[oidx]" "
         }
-        print ""
       }
-    }'
+      print ""
+    }'|sed -e 's/^[[:space:]]//'
 }
 # }}}
 
