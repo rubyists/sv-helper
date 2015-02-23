@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
+# Author: bougyman <tj@rubyists.com>
+# License: MIT
+# This utility adds helper commands for administering runit services
+
 set -e
-#set -x
+commands="sv-list svls sv-find sv-enable sv-disable sv-start sv-stop sv-restart"
+
 # Locate the service in the user's $SVDIR or /etc/sv
 function find_service {
   service=$1
@@ -100,6 +105,17 @@ function list {
   fi
 }
 
+function make_links {
+  me="${BASH_SOURCE[0]}"
+  echo $me
+  here="$( cd "$(dirname "$me" )" && pwd )"
+  echo $here
+  exit 1
+  for link in $commands;do
+    [ -L "$here/$link" ] || ln -s "$me" "$here/$link"
+  done
+}
+
 # Usage
 function usage {
   cmd=$1
@@ -112,7 +128,10 @@ function usage {
     svls) echo "svls [<service>] - Show list of services (Default: all services, pass a service name to see just one)";;
     sv-find) echo "sv-find <service> - Find a service, if it exists";;
     sv-list) echo "sv-list - List available services";;
-    *) echo "Invalid command (sv-list svls sv-find sv-enable sv-disable sv-stop sv-restart sv-start sv-stop)";;
+    make-links) echo "Make symlinks for the individual commands";;
+    commands) echo "Valid Commands: ${commands} make-links"
+              echo "use command -h for help";;
+    *) echo "Invalid command (${commands})";;
   esac
 }
 
@@ -121,7 +140,11 @@ function usage {
 cmd=$(basename $0) # Get the command
 if [ "$cmd" == "sv-helper" -o "$cmd" == "sv-helper.sh" ];then
   cmd=$1
-  shift
+  if [ "x${cmd}" == "x" ];then
+    cmd="commands"
+  else
+    shift
+  fi
 fi
 # help
 while getopts h options
@@ -139,9 +162,8 @@ case "$cmd" in
   restart|sv-restart) sv t $(find_service $@);;
   stop|sv-stop) sv d $(find_service $@);;
   ls|svls) list $@;;
+  make-links) make_links;;
   find|sv-find) find_service $@;;
   list|sv-list) find $(find_service) -maxdepth 1 -mindepth 1 -type d -exec basename {} \; ;;
-  *) usage;
-     break;;
+  *) usage commands;;
 esac
-
