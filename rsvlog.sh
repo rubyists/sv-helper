@@ -8,7 +8,7 @@
 # If the file './conf' exists, it can modify the behavior
 # of the svlogd in these ways:
 
-# USERGROUP=user:group (default log:adm)
+# USERGROUP=user:group (default rsvlog:adm)
 # SV_LOGDIR=/path/to/log (default `basename $(dirname $PWD)`)
 # CURRENT_LOG_FILE=filename.log (default 'current')
 
@@ -29,7 +29,7 @@ if [ "x$SV_LOGDIR" != "x" ];then
   logdir=$SV_LOGDIR
 fi
 if [ -w /var/log ];then
-  user_group=${USERGROUP:-log:adm}
+  user_group=${USERGROUP:-rsvlog:adm}
   if [ "x$logdir" == "x" ];then
     logdir=$(basename $(dirname $(pwd)))
   fi
