@@ -1,4 +1,4 @@
-#!/usr/bin/env bash 
+#!/bin/sh
 # Author: TJ Vanderpoel
 # Licence: MIT
 # This is a generic 'run' script meant to be linked in a log/ directory
@@ -30,7 +30,7 @@ if [ "x$SV_LOGDIR" != "x" ];then
 fi
 if [ -w /var/log ];then
   user_group=${USERGROUP:-rsvlog:adm}
-  if [ "x$logdir" == "x" ];then
+  if [ "x$logdir" = "x" ];then
     logdir=$(basename $(dirname $(pwd)))
   fi
   [ -d "/var/log/$logdir" ] || mkdir -p "/var/log/$logdir"

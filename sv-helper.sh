@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 # Author: bougyman <tj@rubyists.com>
 # License: MIT
 # This utility adds helper commands for administering runit services
@@ -7,7 +7,7 @@ set -e
 commands="sv-list svls sv-find sv-enable sv-disable sv-start sv-stop sv-restart"
 
 # Locate the service in the user's $SVDIR or /etc/sv
-function find_service {
+find_service() {
   service=$1
   svdir=$(svdir 2>/dev/null)
   if [ "x$service" != "x" ];then
@@ -31,7 +31,7 @@ function find_service {
 }
 
 # Set to user's $SVDIR or /service
-function svdir {
+svdir() {
   if [ -z $SVDIR ];then
     #echo "using /service" >&2
     if [ -d /service ];then
@@ -57,7 +57,7 @@ function svdir {
 }
 
 # Add sudo if we don't own the directory in question
-function check_owner {
+check_owner() {
   lndir=$1
   if [ ! -w $lndir ];then
     echo "sudo "
@@ -65,7 +65,7 @@ function check_owner {
 }
 
 # Symlink a service (from find_service's path to `svdir`/$service)
-function enable {
+enable() {
   echo "Enabling $1" >&2
   service=$1
   svdir=$(find_service $service)
@@ -83,7 +83,7 @@ function enable {
 }
 
 # Remove a symlink of a service (from find_service's path to `svdir`/$service)
-function disable {
+disable() {
   echo "Disabling $1" >&2
   service=$1
   ln_dir=$(svdir)
@@ -95,7 +95,7 @@ function disable {
 }
 
 # Generic list, of one service or all
-function list {
+list() {
   svdir=$(svdir)
   if [ ! -z "$1" ];then
     $(check_owner $svdir) sv s "$svdir/"$1
@@ -105,19 +105,17 @@ function list {
   fi
 }
 
-function make_links {
-  me="${BASH_SOURCE[0]}"
+make_links() {
+  me="$0"
   echo $me
   here="$( cd "$(dirname "$me" )" && pwd )"
-  echo $here
-  exit 1
   for link in $commands;do
     [ -L "$here/$link" ] || ln -s "$me" "$here/$link"
   done
 }
 
 # Usage
-function usage {
+usage() {
   cmd=$1
   case "$cmd" in
     sv-enable) echo "sv-enable <service> - Enable a service and start it (will restart on boots)";;
@@ -138,9 +136,9 @@ function usage {
 # Start main program
 
 cmd=$(basename $0) # Get the command
-if [ "$cmd" == "sv-helper" -o "$cmd" == "sv-helper.sh" ];then
+if [ "$cmd" = "sv-helper" ] || [ "$cmd" = "sv-helper.sh" ];then
   cmd=$1
-  if [ "x${cmd}" == "x" ];then
+  if [ "x${cmd}" = "x" ];then
     cmd="commands"
   else
     shift
