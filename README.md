@@ -1,5 +1,7 @@
 This repository includes two helpers for administering runit services
 
+[full documentation](https://github.com/rubyists/sv-helper/wiki)
+
 ### sv-helper.sh
 
 sv-helper.sh provides the following sv/runit helpers:
