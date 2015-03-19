@@ -31,10 +31,10 @@ example use of rsvlog.sh
 in /etc/sv/aservice/log/ you may drop a file named 'conf',
 which can modify the log service
 
-# example conf
-USERGROUP=log:adm
-LOGDIR=aservice/service\_logs
-CURRENT\_LOG\_FILE=aservice.log
+    # example conf
+    USERGROUP=log:adm
+    LOGDIR=aservice/service\_logs
+    CURRENT\_LOG\_FILE=aservice.log
 
 USERGROUP is the user and group which the log service runs as
           (default is log:adm)
