@@ -28,7 +28,7 @@ example use of rsvlog.sh
     ...
   Create the /etc/aservice/run script, and symlink to your $SVDIR. 
 
-in /etc/sv/aservice/log/ you man drop a file named 'conf',
+in /etc/sv/aservice/log/ you may drop a file named 'conf',
 which can modify the log service
 
 # example conf
