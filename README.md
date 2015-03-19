@@ -24,7 +24,7 @@ rsvlog.sh is meant to be symlinked in a <service>/log directory
 example use of rsvlog.sh
 
     mkdir -p /etc/sv/aservice/log
-    ln -s /usr/bin/rsvlog/sh /etc/sv/aservice/log/run
+    ln -s /usr/bin/rsvlog /etc/sv/aservice/log/run
     ...
   Create the /etc/aservice/run script, and symlink to your $SVDIR. 
 
