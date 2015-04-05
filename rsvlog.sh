@@ -23,7 +23,7 @@ if [ "$curdir" != "log" ];then
   exit 1
 fi
 if [ -f ./conf ];then
-  source ./conf
+  . ./conf
 fi
 if [ "x$SV_LOGDIR" != "x" ];then
   logdir=$SV_LOGDIR
