@@ -31,16 +31,22 @@ example use of rsvlog.sh
 in /etc/sv/aservice/log/ you may drop a file named 'conf',
 which can modify the log service
 
-    # example conf
+    # example conf for syslog logging
+    SV_LOG_SYSLOG=true 
+    SV_LOG_SYSLOG_PRIORITY=local7.info
+
+    # example conf for svlogd logging, logs go to /var/log/aservice/service_logs in this case
     USERGROUP=log:adm
     LOGDIR=aservice/service_logs
     CURRENT_LOG_FILE=aservice.log
 
-USERGROUP is the user and group which the log service runs as
+* `SV_LOG_SYSLOG` if set, will log to syslog, ignoring all other options except for `SV_LOG_SYSLOG_PRIORITY`
+* `SV_LOG_SYSLOG_PRIORITY` - The priority to use, in facility.level format.  Defaults to daemon.info
+* `USERGROUP` is the user and group which the log service runs as
           (default is log:adm)
 
-LOGDIR is the relative directory (under /var/log/<servicename>) where the 
+* `LOGDIR` is the relative directory (under /var/log/<servicename>) where the 
        service will log. (default is /var/log/<servicename>)
        
-CURRENT\_LOG\_FILE is the filename for the link to the 'current' logfile.
+* `CURRENT_LOG_FILE` is the filename for the link to the 'current' logfile.
                    (default is 'current')
