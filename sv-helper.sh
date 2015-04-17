@@ -11,21 +11,21 @@ find_service() {
   service=$1
   svdir=$(svdir 2>/dev/null)
   if [ "x$service" != "x" ];then
-    if [ -L "$svdir/$service" ];then
-      location=$(readlink -f "$svdir/$service")
+    if [ -L $svdir/$service ];then
+      location=$(readlink -f $svdir/$service)
     fi
   fi
   if [ "x$location" != "x" ];then
     echo $location
   else
-    if [ -d "$svdir/../sv/$service" ];then
+    if  [ -d /etc/sv/$service ];then
+      echo /etc/sv/$service
+    elif [ -d "$svdir/../sv/$service" ];then
       echo "$svdir/../sv/$service"
     elif [ -d "$svdir/../Service/$service" ];then
       echo "$svdir/../Service/$service"
     elif [ -d "$svdir/../Services/$service" ];then
       echo "$svdir/../Services/$service"
-    elif  [ "$svdir" != "/etc/sv/$service" -a -d "/etc/sv/$service" ];then
-      echo "/etc/sv/$service"
     fi
   fi
 }
@@ -34,12 +34,12 @@ find_service() {
 svdir() {
   if [ -z $SVDIR ];then
     #echo "using /service" >&2
-    if [ -d /service ];then
+    if [ -d /var/service ];then
+      svdir=/var/service
+    elif [ -d /service ];then
       svdir=/service
     elif [ -d /etc/service ];then
       svdir=/etc/service
-    elif [ -d /var/service ];then
-      svdir=/var/service
     else
       echo "No service directory found" 1>&2
       exit 127
@@ -153,12 +153,13 @@ do
   esac
 done
 
+svc=$(find_service $@)
 case "$cmd" in
   enable|sv-enable) enable $@;;
   disable|sv-disable) disable $@;;
-  start|sv-start) sv u $(find_service $@);;
-  restart|sv-restart) sv t $(find_service $@);;
-  stop|sv-stop) sv d $(find_service $@);;
+  start|sv-start) $(check_owner $svc) sv u $svc;;
+  restart|sv-restart) $(check_owner $svc) sv t $svc;;
+  stop|sv-stop) $(check_owner $svc) sv d $svc;;
   ls|svls) list $@;;
   make-links) make_links;;
   find|sv-find) find_service $@;;
