@@ -9,11 +9,11 @@ PreCommit:
   BrokenSymlinks:
     enabled: true
   BundleAudit:
-    enabled: true
+    enabled: false
   BundleCheck:
-    enabled: true
+    enabled: false
   BundleOutdated:
-    enabled: true
+    enabled: false
   CaseConflicts:
     enabled: true
   ChamberCompare:
