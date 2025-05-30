@@ -1,0 +1,356 @@
+---
+PreCommit:
+  AuthorEmail:
+    enabled: true
+  AuthorName:
+    enabled: true
+  BerksfileCheck:
+    enabled: false
+  BrokenSymlinks:
+    enabled: true
+  BundleAudit:
+    enabled: true
+  BundleCheck:
+    enabled: true
+  BundleOutdated:
+    enabled: true
+  CaseConflicts:
+    enabled: true
+  ChamberCompare:
+    enabled: false
+  ChamberSecurity:
+    enabled: false
+  ChamberVerification:
+    enabled: false
+  CodeSpellCheck:
+    enabled: false
+  CoffeeLint:
+    enabled: false
+  CookStyle:
+    enabled: false
+  Credo:
+    enabled: false
+  CssLint:
+    enabled: false
+  DartAnalyzer:
+    enabled: false
+  Dogma:
+    enabled: false
+  ErbLint:
+    enabled: false
+  EsLint:
+    enabled: false
+  ExecutePermissions:
+    enabled: false
+  Fasterer:
+    enabled: false
+  FixMe:
+    enabled: true
+  FileSize:
+    enabled: false
+  Flay:
+    enabled: false
+  Foodcritic:
+    enabled: false
+  ForbiddenBranches:
+    enabled: true
+    branch_patterns: ['main', 'master']
+  GinkgoFocus:
+    enabled: false
+  GoFmt:
+    enabled: false
+  GolangciLint:
+    enabled: false
+  GoLint:
+    enabled: false
+  GoVet:
+    enabled: false
+  Hadolint:
+    enabled: false
+  HamlLint:
+    enabled: false
+  HardTabs:
+    enabled: false
+  Hlint:
+    enabled: false
+  HtmlHint:
+    enabled: false
+  HtmlTidy:
+    enabled: false
+  ImageOptim:
+    enabled: false
+  JavaCheckstyle:
+    enabled: false
+  Jscs:
+    enabled: false
+  JsHint:
+    enabled: false
+  JsLint:
+    enabled: false
+  Jsl:
+    enabled: false
+  JsonSyntax:
+    enabled: false
+  KtLint:
+    enabled: false
+  LicenseFinder:
+    enabled: false
+  LicenseHeader:
+    enabled: false
+  LocalPathsInGemfile:
+    enabled: false
+  Mdl:
+    enabled: false
+  MergeConflicts:
+    enabled: true
+  MixFormat:
+    enabled: false
+  PuppetMetadataJsonLint:
+    enabled: false
+  NginxTest:
+    enabled: false
+  Pep257:
+    enabled: false
+  Pep8:
+    enabled: false
+  PhpLint:
+    enabled: false
+  PhpCs:
+    enabled: false
+  PhpCsFixer:
+    enabled: false
+  PhpStan:
+    enabled: false
+  Pronto:
+    enabled: false
+  PuppetLint:
+    enabled: false
+  Pycodestyle:
+    enabled: false
+  Pydocstyle:
+    enabled: false
+  Pyflakes:
+    enabled: false
+  Pylint:
+    enabled: false
+  PythonFlake8:
+    enabled: false
+  RakeTarget:
+    enabled: false
+  RailsBestPractices:
+    enabled: false
+  RailsSchemaUpToDate:
+    enabled: false
+  Reek:
+    enabled: false
+  RstLint:
+    enabled: false
+  RSpec:
+    enabled: false
+  RuboCop:
+    enabled: true
+  RubyLint:
+    enabled: false
+  RubySyntax:
+    enabled: false
+  Scalariform:
+    enabled: false
+  Scalastyle:
+    enabled: false
+  ScssLint:
+    enabled: false
+  SemiStandard:
+    enabled: false
+  ShellCheck:
+    enabled: true
+  SlimLint:
+    enabled: false
+  Sorbet:
+    enabled: false
+  Sqlint:
+    enabled: false
+  Standard:
+    enabled: false
+  Stylelint:
+    enabled: false
+  SwiftLint:
+    enabled: false
+  TerraformFormat:
+    enabled: false
+  TsLint:
+    enabled: false
+  TrailingWhitespace:
+    enabled: true
+  TravisLint:
+    enabled: false
+  Vint:
+    enabled: false
+  W3cCss:
+    enabled: false
+  W3cHtml:
+    enabled: false
+  LineEndings:
+    enabled: false
+  XmlLint:
+    enabled: false
+  XmlSyntax:
+    enabled: false
+  YamlLint:
+    enabled: false
+  YamlSyntax:
+    enabled: true
+  YardCoverage:
+    enabled: false
+  YarnCheck:
+    enabled: false
+CommitMsg:
+  CapitalizedSubject:
+    enabled: false
+  EmptyMessage:
+    enabled: true
+  GerritChangeId:
+    enabled: false
+  HardTabs:
+    enabled: false
+  MessageFormat:
+    enabled: true
+    expected_pattern_message: |-
+      /^(?<type>build|chore|ci|eyes|docs|feat|fix|perf|refactor|revert|sec|style|test)(?<scope>\(\w+\))?!?:\s+(?<subject>[a-zA-Z].*)$/
+
+      The (scope) and ! (Breaking Change indicator) are optional, see
+
+      - https://www.conventionalcommits.org/en/v1.0.0/#specification
+
+      The list of commit message types was taken from the Angular commit convention, see
+
+      - https://github.com/conventional-changelog/commitlint/tree/master/%40commitlint/config-conventional
+
+      NOTE: We have added eyes (observability-related) and sec (security/compliance-related) to the list of types, as compared to the Angular commit convention.
+
+      Subject must start with a letter (Case doesn't matter)
+    pattern: '^(?<type>build|chore|ci|eyes|docs|feat|fix|perf|refactor|revert|sec|style|test)(?<scope>\(\w+\))?!?:\s+(?<subject>[a-zA-Z].*)$'
+    sample_message: 'docs(readme): Correct typo'
+  RussianNovel:
+    enabled: true
+  SingleLineSubject:
+    enabled: true
+  SpellCheck:
+    enabled: false
+  TextWidth:
+    enabled: true
+    max_subject_width: 72
+  TrailingPeriod:
+    enabled: true
+PostCheckout:
+  BowerInstall:
+    enabled: false
+  BundleInstall:
+    enabled: false
+  ComposerInstall:
+    enabled: false
+  GitLfs:
+    enabled: false
+  IndexTags:
+    enabled: false
+  NpmInstall:
+    enabled: false
+  SubmoduleStatus:
+    enabled: false
+  YarnInstall:
+    enabled: false
+PostCommit:
+  BowerInstall:
+    enabled: false
+  BundleInstall:
+    enabled: false
+  Commitplease:
+    enabled: false
+  ComposerInstall:
+    enabled: false
+  GitGuilt:
+    enabled: false
+  GitLfs:
+    enabled: false
+  IndexTags:
+    enabled: false
+  NpmInstall:
+    enabled: false
+  SubmoduleStatus:
+    enabled: false
+  YarnInstall:
+    enabled: false
+PostMerge:
+  BowerInstall:
+    enabled: false
+  BundleInstall:
+    enabled: false
+  ComposerInstall:
+    enabled: false
+  GitLfs:
+    enabled: false
+  IndexTags:
+    enabled: false
+  NpmInstall:
+    enabled: false
+  SubmoduleStatus:
+    enabled: false
+  YarnInstall:
+    enabled: false
+PostRewrite:
+  BowerInstall:
+    enabled: false
+  BundleInstall:
+    enabled: false
+  ComposerInstall:
+    enabled: false
+  IndexTags:
+    enabled: false
+  NpmInstall:
+    enabled: false
+  SubmoduleStatus:
+    enabled: false
+  YarnInstall:
+    enabled: false
+PrePush:
+  Brakeman:
+    enabled: false
+  CargoTest:
+    enabled: false
+  FlutterTest:
+    enabled: false
+  GitLfs:
+    enabled: true
+    required_executable: 'git-lfs'
+    flags: ['pre-push']
+  GolangciLint:
+    enabled: false
+  GoTest:
+    enabled: false
+  Minitest:
+    enabled: false
+  MixTest:
+    enabled: false
+  PhpUnit:
+    enabled: false
+  Pronto:
+    enabled: false
+  ProtectedBranches:
+    enabled: true
+  PubTest:
+    enabled: false
+  Pytest:
+    enabled: false
+  PythonNose:
+    enabled: false
+  RSpec:
+    enabled: false
+  RakeTarget:
+    enabled: false
+  TestUnit:
+    enabled: false
+PreRebase:
+  MergedCommits:
+    enabled: false
+PrepareCommitMsg:
+  ReplaceBranch:
+    enabled: false
