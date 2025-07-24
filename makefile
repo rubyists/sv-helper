@@ -13,6 +13,7 @@ install: all
 	$(INSTALL) -d -m 0755 $(DESTDIR)$(BINDIR)
 	$(INSTALL) -d -m 0755 $(DESTDIR)$(DOCDIR)
 	$(INSTALL) -m 0755 rsvlog.sh $(DESTDIR)$(BINDIR)/rsvlog
+	$(INSTALL) -m 0755 runsvdir.sh $(DESTDIR)$(BINDIR)/runsvdir.sh
 	$(INSTALL) -m 0755 sv-helper.sh $(DESTDIR)$(BINDIR)/sv-helper
 	$(INSTALL) -m 0644 README.md $(DESTDIR)$(DOCDIR)/README.md
 	$(INSTALL) -m 0644 COPYING $(DESTDIR)$(DOCDIR)/COPYING
@@ -24,6 +25,7 @@ install: all
 uninstall:
 	rm -vf $(DESTDIR)$(BINDIR)/sv-helper
 	rm -vf $(DESTDIR)$(BINDIR)/rsvlog
+	rm -vf $(DESTDIR)$(BINDIR)/runsvdir.sh
 	for sv in sv-start sv-stop sv-restart sv-list svls sv-enable sv-disable sv-find; do \
 		rm -vf $(DESTDIR)$(BINDIR)/"$$sv"; \
 	done
