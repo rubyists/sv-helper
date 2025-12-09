@@ -1,0 +1,11 @@
+# If the file './conf' exists in a log directory, it can modify the behavior
+# of the svlogd in these ways:
+
+# SV_LOG_SYSLOG=<anything> (if set, uses syslog)
+# SV_LOG_SYSLOG_PRIORITY=daemon.info (default daemon.info)
+
+# If SV_LOG_SYSLOG is unset, these variables are used for the svlogd
+# configuration
+# USERGROUP=user:group (default rsvlog:adm)
+# SV_LOGDIR=/path/to/log (default `basename $(dirname $PWD)`)
+# CURRENT_LOG_FILE=filename.log (default 'current')

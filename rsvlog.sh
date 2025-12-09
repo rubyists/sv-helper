@@ -38,9 +38,16 @@ if [ -n "$SV_LOG_SYSLOG" ]; then
 	exec logger -p "$prio"
 fi
 
-if [ "x$SV_LOGDIR" != "x" ]; then
+if [ -z "$SV_LOGDIR" ]; then
 	logdir=$SV_LOGDIR
 fi
+
+link_current() {
+	[ -L ./current ] || ln -s main/current current
+	if [ -z "$CURRENT_LOG_FILE" ]; then
+		[ -L "/var/log/$logdir/$CURRENT_LOG_FILE" ] || ln -s current "/var/log/$logdir/$CURRENT_LOG_FILE"
+	fi
+}
 
 if [ -d ./main ]
 then
@@ -48,6 +55,7 @@ then
 	if [ "$usergroup" != "$user_group" ]; then
 		chown -R "$user_group" ./main
     fi
+    link_current
     echo "Logging in existing $PWD/main directory"
     exec svlogd -t ./main
 fi
@@ -55,15 +63,12 @@ fi
 if [ -w /var/log ]
 then
 	user_group=${USERGROUP:-rsvlog:adm}
-	if [ "x$logdir" = "x" ]; then
+	if [ -z "$logdir" ]; then
 		logdir=$(basename "$(dirname "$(pwd)")")
 	fi
 	[ -d "/var/log/$logdir" ] || mkdir -p "/var/log/$logdir"
 	ln -svf "/var/log/$logdir" ./main
-	[ -L ./current ] || ln -s main/current current
-	if [ "x$CURRENT_LOG_FILE" != "x" ]; then
-		[ -L "/var/log/$logdir/$CURRENT_LOG_FILE" ] || ln -s current "/var/log/$logdir/$CURRENT_LOG_FILE"
-	fi
+    link_current
 	usergroup=$(stat -c "%U:%G" "/var/log/$logdir")
 	if [ "$usergroup" != "$user_group" ]; then
 		chown -R "$user_group" "/var/log/$logdir"
@@ -74,7 +79,7 @@ fi
 
 echo "Logging in $PWD"
 
-if [ "x$CURRENT_LOG_FILE" != "x" ]; then
+if [ -z "$CURRENT_LOG_FILE" ]; then
     [ -L "$CURRENT_LOG_FILE" ] || ln -s current "$CURRENT_LOG_FILE"
 fi
 exec svlogd -t ./
