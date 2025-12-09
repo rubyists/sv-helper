@@ -44,9 +44,6 @@ fi
 
 link_current() {
 	[ -L ./current ] || ln -s main/current current
-	if [ -z "$CURRENT_LOG_FILE" ]; then
-		[ -L "/var/log/$logdir/$CURRENT_LOG_FILE" ] || ln -s current "/var/log/$logdir/$CURRENT_LOG_FILE"
-	fi
 }
 
 if [ -d ./main ]
@@ -69,6 +66,9 @@ then
 	[ -d "/var/log/$logdir" ] || mkdir -p "/var/log/$logdir"
 	ln -svf "/var/log/$logdir" ./main
     link_current
+	if [ -z "$CURRENT_LOG_FILE" ]; then
+		[ -L "/var/log/$logdir/$CURRENT_LOG_FILE" ] || ln -s current "/var/log/$logdir/$CURRENT_LOG_FILE"
+	fi
 	usergroup=$(stat -c "%U:%G" "/var/log/$logdir")
 	if [ "$usergroup" != "$user_group" ]; then
 		chown -R "$user_group" "/var/log/$logdir"
