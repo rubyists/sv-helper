@@ -1,0 +1,42 @@
+# A container with runit as PID 1 and UID 0, supervising sv-helper's
+# services. Build from the repository root:
+#
+#   podman build -f container/Containerfile -t sv-helper-demo .
+#   podman run --rm --name sv-helper-demo sv-helper-demo
+#   podman stop sv-helper-demo        # exits through stage 3, no forced kill
+#
+# docker works the same way.
+FROM docker.io/library/alpine:3.22
+
+# runit brings runsvdir, runsv, sv, svlogd and chpst. The `runit` package
+# ships the binaries; the stages below are sv-helper's own.
+RUN apk add --no-cache runit
+
+WORKDIR /opt/sv-helper
+COPY install.sh rsvlog.sh runsvdir.sh sv-helper.sh README.md COPYING ./
+COPY etc ./etc
+
+# Two separate installations, because they mean different things: the
+# commands go wherever you want them, the stages only ever go in /etc/runit
+# and change how the container boots.
+RUN ./install.sh install --prefix /usr/local \
+    && ./install.sh install-stages
+
+# Service definitions, and the tree runsvdir actually supervises. Enabling
+# a service is a symlink from the tree to its definition, exactly as it is
+# on a host.
+COPY container/sv /etc/sv
+RUN mkdir -p /etc/service \
+    && ln -s /etc/sv/hello /etc/service/hello \
+    && ln -s /usr/local/bin/rsvlog /etc/sv/hello/log/run
+
+ENV SVDIR=/etc/service
+
+# runit only accepts INT and CONT, and only in stage 2. INT is the
+# ctrl-alt-del request, which /etc/runit/ctrlaltdel turns into a shutdown;
+# see that file. A SIGTERM here would be ignored and the runtime would kill
+# the container after its stop timeout instead.
+STOPSIGNAL SIGINT
+
+# Alpine ships runit in /usr/sbin; other distributions use /sbin.
+CMD ["/usr/sbin/runit"]
