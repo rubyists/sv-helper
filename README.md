@@ -6,7 +6,23 @@ PID 1 in a container.
 
 ## Install
 
-From a checkout, or from an unpacked release archive:
+From a release archive, with no package manager at all:
+
+    curl -fsSLO https://github.com/rubyists/sv-helper/releases/latest/download/sv-helper-linux.tar.gz
+    tar -xzf sv-helper-linux.tar.gz
+    cd sv-helper-*/
+    ./install.sh
+
+Replace `linux` with `darwin` on macOS. Each release also publishes
+`rsvlog`, `sv-helper.sh` and `runsvdir.sh` on their own, and a
+`SHA256SUMS` covering everything:
+
+    sha256sum -c SHA256SUMS --ignore-missing
+
+See [docs/releasing.md](docs/releasing.md) for how releases are built
+and verified.
+
+From a checkout, or from that unpacked archive:
 
     ./install.sh                    # ~/.local by default, /usr/local as root
     ./install.sh --prefix /opt/sv
