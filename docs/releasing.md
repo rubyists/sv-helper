@@ -91,8 +91,12 @@ whose bytes differ stops the run rather than being replaced, because that
 means the release and the rebuild disagree about what this version is.
 Delete that asset deliberately if you really do mean to change it.
 
-A draft release has no git tag yet — GitHub creates it on publication —
-so if the tag cannot be resolved, pass the commit in the `commit` input.
+GitHub on its own only tags a draft release when it is published, so
+release-please is configured with `force-tag-creation` to tag the draft as
+it creates it. Without that, release-please cannot find the release it
+just made, and its next release pull request re-lists the entire history
+as unreleased. If the tag still cannot be resolved, pass the commit in
+the `commit` input.
 
 Once a release is **published** it is immutable and nothing can be added
 to it. That is the reason for the draft-first ordering, and it is why the
