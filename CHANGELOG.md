@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.0.1](https://github.com/rubyists/sv-helper/compare/v4.0.0...v4.0.1) (2026-10-04)
+
+
+### Continuous Integration
+
+* Tag draft releases as release-please creates them ([#29](https://github.com/rubyists/sv-helper/issues/29)) ([83e6874](https://github.com/rubyists/sv-helper/commit/83e6874a2c58dcd6974f480490425a62cba4b767))
+
 ## [4.0.0](https://github.com/rubyists/sv-helper/compare/v3.5.0...v4.0.0) (2026-10-04)
 
 
