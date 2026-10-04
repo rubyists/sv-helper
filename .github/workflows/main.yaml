@@ -1,0 +1,372 @@
+---
+# The release pipeline.
+#
+# A push to main keeps release-please's release pull request up to date.
+# Merging that pull request is what releases: release-please creates the
+# tag and a DRAFT release, and the jobs below fill it in and then publish
+# it.
+#
+# The release stays a draft until everything is attached, on purpose.
+# GitHub's Immutable Releases locks a release's assets the moment it is
+# published, so a published-then-filled release can be locked half empty,
+# permanently. Filling a draft and publishing last means a failed run
+# leaves a draft that can simply be re-run.
+#
+# Credentials:
+#   RELEASE_PLEASE_TOKEN  an org secret. Needed because the built-in
+#                         GITHUB_TOKEN is scoped to this repository and
+#                         cannot open a pull request against
+#                         rubyists/homebrew-tap, and because a release
+#                         created with the built-in token starts no
+#                         further workflows.
+#   GITHUB_TOKEN          everything else, with per-job permissions below.
+name: main
+
+on:  # yamllint disable-line rule:truthy
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: >-
+          Finish publishing an existing release, e.g. v3.6.0. Rebuilds the
+          payload from that release's commit and uploads only what is
+          missing; it refuses to replace an asset whose bytes differ.
+          Works while the release is still a draft, which is where an
+          interrupted run leaves it.
+        required: true
+        type: string
+      commit:
+        description: >-
+          The commit to rebuild from. Only needed for a release that is
+          still a draft and whose target cannot be read back, since a
+          draft release has no git tag yet.
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  PACKSLIP_VERSION: "1.5.1"
+
+jobs:
+  validate:
+    name: Validations
+    uses: ./.github/workflows/ci.yaml
+
+  release-please:
+    name: Open or update the release pull request
+    needs: [validate]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      released: ${{ steps.release.outputs.releases_created }}
+      tag: ${{ steps.release.outputs.tag_name }}
+      prerelease: ${{ steps.release.outputs.prerelease }}
+    steps:
+      -
+        uses: actions/checkout@v7
+        with:
+          fetch-tags: true
+      -
+        # The release it creates is a draft, per .release-please-config.json.
+        # Its outputs are what the rest of this workflow follows, so
+        # publication never depends on a second tag or release event
+        # firing afterwards.
+        uses: googleapis/release-please-action@v5
+        id: release
+        with:
+          config-file: .release-please-config.json
+          manifest-file: .release-please-manifest.json
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+
+  # One place decides which tag this run is about, so the normal path and
+  # the recovery path cannot drift apart.
+  target:
+    name: Decide what is being published
+    needs: [validate, release-please]
+    if: >-
+      always() && needs.validate.result == 'success' &&
+      (github.event_name == 'workflow_dispatch' || needs.release-please.outputs.released == 'true')
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.pick.outputs.tag }}
+      version: ${{ steps.pick.outputs.version }}
+      commit: ${{ steps.pick.outputs.commit }}
+    steps:
+      -
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      -
+        id: pick
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DISPATCH_TAG: ${{ inputs.tag }}
+          DISPATCH_COMMIT: ${{ inputs.commit }}
+          RELEASE_TAG: ${{ needs.release-please.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" != workflow_dispatch ]; then
+              # The push being handled is the release pull request's own
+              # merge commit, which is exactly what was released.
+              tag=$RELEASE_TAG
+              commit=$GITHUB_SHA
+          else
+              tag=$DISPATCH_TAG
+              # Rebuild from the released commit, not from wherever main
+              # has got to since: a recovery run has to produce the same
+              # bytes the release already contains.
+              #
+              # A draft release has no git tag - GitHub only creates the
+              # tag when the release is published - and an interrupted
+              # run is exactly the case this path exists for. So try the
+              # tag, then the release's own target, then give up and ask.
+              if [ -n "$DISPATCH_COMMIT" ]; then
+                  commit=$DISPATCH_COMMIT
+              elif commit=$(git rev-list -n1 "$tag" 2>/dev/null); then
+                  :
+              else
+                  commit=$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" \
+                      --json targetCommitish --jq '.targetCommitish')
+              fi
+              case "$commit" in
+              [0-9a-f]*) ;;
+              *)
+                  echo "::error::Could not resolve a commit for $tag" \
+                       "(got '$commit'). Re-run with the commit input set." >&2
+                  exit 1
+                  ;;
+              esac
+              git cat-file -e "$commit^{commit}"
+          fi
+          printf 'tag=%s\n' "$tag" >> "$GITHUB_OUTPUT"
+          printf 'version=%s\n' "${tag#v}" >> "$GITHUB_OUTPUT"
+          printf 'commit=%s\n' "$commit" >> "$GITHUB_OUTPUT"
+
+  publish-assets:
+    name: Build and attach the release payload
+    needs: [target]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      -
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.target.outputs.commit }}
+      -
+        name: Build the payload
+        run: ci/build_release_payload.sh "${{ needs.target.outputs.version }}" dist
+      -
+        # Idempotent: uploads what is missing, skips what is already
+        # there byte for byte, and stops if a published asset differs.
+        # That is what makes re-running this safe.
+        name: Attach it to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ci/publish_release_assets.sh "${{ needs.target.outputs.tag }}" dist
+      -
+        # Handed to the signing job, which has contents: read and so
+        # cannot see a draft release to download from.
+        name: Hand the payload to the signing job
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-payload
+          path: dist/
+          retention-days: 1
+
+  sign:
+    name: Sign the payload
+    needs: [target, publish-assets]
+    runs-on: ubuntu-latest
+    permissions:
+      # Deliberately not contents: write. This job signs whatever bytes
+      # it is given; it must not be able to change the release.
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      -
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.target.outputs.commit }}
+      -
+        uses: actions/download-artifact@v8
+        with:
+          name: release-payload
+          path: dist
+      -
+        uses: jdx/packslip@v1
+        id: packslip
+        with:
+          manifest: release.toml
+          # Exactly the files release.toml declares, never dist/*:
+          # SHA256SUMS is published beside them but is not an artifact,
+          # and a glob would hand packslip a file with no platform and
+          # no format for it to refuse.
+          artifacts: >-
+            dist/sv-helper-linux.tar.gz
+            dist/sv-helper-darwin.tar.gz
+            dist/sv-helper.sh
+            dist/rsvlog
+            dist/runsvdir.sh
+          # This workflow runs from main, not from the release tag, so
+          # none of these can be inferred from the trigger.
+          tag: ${{ needs.target.outputs.tag }}
+          version: ${{ needs.target.outputs.version }}
+          commit: ${{ needs.target.outputs.commit }}
+          upload: false
+      -
+        uses: actions/upload-artifact@v7
+        with:
+          name: packslip-bundle
+          path: ${{ steps.packslip.outputs.bundle }}
+          retention-days: 1
+
+  publish-release:
+    name: Attach the bundle and publish the release
+    needs: [target, sign]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      -
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.target.outputs.commit }}
+      -
+        uses: actions/download-artifact@v8
+        with:
+          name: packslip-bundle
+          path: bundle
+      -
+        # Same uploader as the payload, for the same reason: re-running
+        # skips a bundle that is already attached and identical, and
+        # refuses to quietly swap one that is not.
+        name: Attach the signed bundle
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ci/publish_release_assets.sh "${{ needs.target.outputs.tag }}" bundle \
+              --repo "$GITHUB_REPOSITORY"
+      -
+        # Last, and only now: publishing is what makes a release
+        # immutable, so nothing may still need adding after this. On a
+        # release that is already published this changes nothing.
+        name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release edit "${{ needs.target.outputs.tag }}" \
+              --repo "$GITHUB_REPOSITORY" --draft=false
+
+  verify:
+    name: Verify the published release
+    needs: [target, publish-release]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      prerelease: ${{ steps.kind.outputs.prerelease }}
+    steps:
+      -
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.target.outputs.commit }}
+      -
+        name: Install packslip
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "v${PACKSLIP_VERSION}" --repo jdx/packslip \
+              --pattern "packslip-v${PACKSLIP_VERSION}-linux-x64" \
+              --output /usr/local/bin/packslip
+          sudo chmod +x /usr/local/bin/packslip
+      -
+        # Downloads the release as a stranger would and checks it: the
+        # checksums, that every expected asset is present, that the
+        # archive unpacks with its commands and permissions intact, and
+        # that the bundle verifies against this repository's identity.
+        name: Verify
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ci/verify_release.sh "${{ needs.target.outputs.tag }}" \
+              --repo "$GITHUB_REPOSITORY" \
+              --identity-prefix "https://github.com/$GITHUB_REPOSITORY/.github/workflows/main.yaml@"
+      -
+        # Read from the release rather than from release-please, which
+        # does not run at all on the recovery path.
+        name: Is this a prerelease?
+        id: kind
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          prerelease=$(gh release view "${{ needs.target.outputs.tag }}" \
+              --repo "$GITHUB_REPOSITORY" --json isPrerelease --jq '.isPrerelease')
+          printf 'prerelease=%s\n' "$prerelease" >> "$GITHUB_OUTPUT"
+
+  homebrew-tap-bump:
+    name: Bump the Homebrew tap formula
+    needs: [target, verify]
+    # Only a verified, stable release. A prerelease is not what `brew
+    # install sv-helper` should start handing out.
+    if: needs.verify.outputs.prerelease != 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      -
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.target.outputs.commit }}
+          path: sv-helper
+      -
+        # RELEASE_PLEASE_TOKEN: the built-in token is scoped to this
+        # repository and cannot push to or open a pull request against
+        # another one.
+        name: Checkout rubyists/homebrew-tap
+        uses: actions/checkout@v7
+        with:
+          repository: rubyists/homebrew-tap
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          path: homebrew-tap
+      -
+        name: Download this release's SHA256SUMS
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "${{ needs.target.outputs.tag }}" \
+              --repo "$GITHUB_REPOSITORY" --pattern SHA256SUMS \
+              --output sv-helper/SHA256SUMS --clobber
+      -
+        name: Write the new version and digests into the formula
+        run: |
+          sv-helper/ci/bump_homebrew_formula.sh \
+              homebrew-tap/Formula/sv-helper/sv-helper.rb \
+              "${{ needs.target.outputs.tag }}" \
+              sv-helper/SHA256SUMS
+      -
+        # Opens nothing when nothing changed, so re-running this for a
+        # release that was already proposed produces no second pull
+        # request. The branch name is per release for the same reason:
+        # a repeat updates that branch instead of opening another.
+        name: Open a pull request, if anything changed
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          path: homebrew-tap
+          commit-message: "fix: bump sv-helper formula to ${{ needs.target.outputs.tag }}"
+          title: "fix: bump sv-helper formula to ${{ needs.target.outputs.tag }}"
+          body: >-
+            Auto-generated after rubyists/sv-helper's
+            ${{ needs.target.outputs.tag }} release was published and verified.
+          branch: "bump-sv-helper-${{ needs.target.outputs.tag }}"
+          delete-branch: true

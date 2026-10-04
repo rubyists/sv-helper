@@ -1,7 +1,55 @@
 Helpers for administering [runit](https://smarden.org/runit/) services —
-as root on a runit system, or as a regular user on macOS or Linux.
+as root on a runit system, as a regular user on macOS or Linux, or as
+PID 1 in a container.
 
 [full documentation](https://github.com/rubyists/sv-helper/wiki)
+
+## Install
+
+Homebrew, on macOS or Linux:
+
+    brew install rubyists/tap/sv-helper
+
+From a release archive, with no package manager at all:
+
+    curl -fsSLO https://github.com/rubyists/sv-helper/releases/latest/download/sv-helper-linux.tar.gz
+    tar -xzf sv-helper-linux.tar.gz
+    cd sv-helper-*/
+    ./install.sh
+
+Replace `linux` with `darwin` on macOS. Each release also publishes
+`rsvlog`, `sv-helper.sh` and `runsvdir.sh` on their own, a `SHA256SUMS`
+covering everything, and a signed [packslip](https://packslip.dev)
+bundle. To check what you downloaded:
+
+    sha256sum -c SHA256SUMS --ignore-missing
+
+    packslip verify packslip.sigstore.json \
+      --identity-prefix 'https://github.com/rubyists/sv-helper/.github/workflows/main.yaml@' \
+      --issuer https://token.actions.githubusercontent.com \
+      --artifact sv-helper-linux.tar.gz
+
+See [docs/releasing.md](docs/releasing.md) for how releases are built
+and verified.
+
+From a checkout, or from that unpacked archive:
+
+    ./install.sh                    # ~/.local by default, /usr/local as root
+    ./install.sh --prefix /opt/sv
+    ./install.sh uninstall
+
+It installs `sv-helper`, `rsvlog` and `runsvdir.sh`, plus the command
+links below. Running it again over an identical tree is fine; a file it
+did not write is reported rather than replaced, and `uninstall` takes
+back only its own and leaves everything else alone.
+
+`PREFIX` is where the files will live when they run. `DESTDIR` is a
+staging root used only at install time, for package builds:
+
+    ./install.sh --destdir "$pkgdir" --prefix /usr
+
+`make install` and `make uninstall` drive the same installer, so there is
+only one definition of what "installed" means.
 
 ## Commands
 
@@ -107,6 +155,20 @@ rather than a silent downgrade to root.
 
 An existing `./main` directory is always kept as-is, so an established
 log layout is never moved out from under the logs already in it.
+
+## Containers
+
+`etc/runit/{1,2,3}` are a complete runit lifecycle for a container
+running as root, with `runsvdir.sh` as stage 2 — the same script a
+regular user runs on a host. Installing them is a separate, explicit
+step, because dropping files into `/etc/runit` changes how the machine
+boots:
+
+    ./install.sh install-stages
+
+See [container/Readme.md](container/Readme.md) for a working
+`Containerfile`, how stopping works, and what to expect when a service
+fails.
 
 ## Development
 

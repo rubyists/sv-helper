@@ -1,0 +1,71 @@
+---
+name: ci
+
+on:  # yamllint disable-line rule:truthy
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+env:
+  # Pinned rather than "latest": a release is signed with whatever this
+  # installs, and a surprise upgrade mid-release is not a surprise anyone
+  # wants. Bump it deliberately.
+  PACKSLIP_VERSION: "1.5.1"
+
+jobs:
+  test:
+    name: Tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # Both legs matter and they fail for different reasons, so let the
+      # other finish rather than cancelling it.
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      -
+        uses: actions/checkout@v7
+        with:
+          # bats and its helper libraries are submodules; without this
+          # the suite cannot run at all.
+          submodules: recursive
+      -
+        # Debian's `runit` package ships sv, runsv, runsvdir, svlogd and
+        # chpst. `runit-init`, the one that replaces init, is a separate
+        # package and is deliberately not installed.
+        name: Install runit and shellcheck
+        if: runner.os == 'Linux'
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y runit shellcheck
+      -
+        # The real thing the macOS support is written against: sv is
+        # patched by this formula to default to $(brew --prefix)/var/service,
+        # and `brew services start runit` is the supported supervisor.
+        # gnu-tar (as gtar) builds the reproducible release payload, and
+        # coreutils supplies the GNU tools the scripts expect.
+        name: Install runit, shellcheck, gnu-tar and coreutils
+        if: runner.os == 'macOS'
+        run: brew install runit shellcheck gnu-tar coreutils
+      -
+        # Only on Linux: the packslip suite skips itself when packslip is
+        # absent, and one platform is enough to check a manifest.
+        name: Install packslip
+        if: runner.os == 'Linux'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "v${PACKSLIP_VERSION}" --repo jdx/packslip \
+              --pattern "packslip-v${PACKSLIP_VERSION}-linux-x64" \
+              --output /usr/local/bin/packslip
+          sudo chmod +x /usr/local/bin/packslip
+          packslip --version
+      -
+        # Docker is present on the Linux runners, so the container suite
+        # runs there and skips itself on macOS.
+        name: Run the test suite
+        run: make test
