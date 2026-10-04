@@ -44,6 +44,9 @@ on:  # yamllint disable-line rule:truthy
 permissions:
   contents: read
 
+env:
+  PACKSLIP_VERSION: "1.5.1"
+
 jobs:
   validate:
     name: Validations
@@ -165,14 +168,90 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: ci/publish_release_assets.sh "${{ needs.target.outputs.tag }}" dist
+      -
+        # Handed to the signing job, which has contents: read and so
+        # cannot see a draft release to download from.
+        name: Hand the payload to the signing job
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-payload
+          path: dist/
+          retention-days: 1
+
+  sign:
+    name: Sign the payload
+    needs: [target, publish-assets]
+    runs-on: ubuntu-latest
+    permissions:
+      # Deliberately not contents: write. This job signs whatever bytes
+      # it is given; it must not be able to change the release.
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      -
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.target.outputs.commit }}
+      -
+        uses: actions/download-artifact@v8
+        with:
+          name: release-payload
+          path: dist
+      -
+        uses: jdx/packslip@v1
+        id: packslip
+        with:
+          manifest: release.toml
+          # Exactly the files release.toml declares, never dist/*:
+          # SHA256SUMS is published beside them but is not an artifact,
+          # and a glob would hand packslip a file with no platform and
+          # no format for it to refuse.
+          artifacts: >-
+            dist/sv-helper-linux.tar.gz
+            dist/sv-helper-darwin.tar.gz
+            dist/sv-helper.sh
+            dist/rsvlog
+            dist/runsvdir.sh
+          # This workflow runs from main, not from the release tag, so
+          # none of these can be inferred from the trigger.
+          tag: ${{ needs.target.outputs.tag }}
+          version: ${{ needs.target.outputs.version }}
+          commit: ${{ needs.target.outputs.commit }}
+          upload: false
+      -
+        uses: actions/upload-artifact@v7
+        with:
+          name: packslip-bundle
+          path: ${{ steps.packslip.outputs.bundle }}
+          retention-days: 1
 
   publish-release:
-    name: Publish the release
-    needs: [target, publish-assets]
+    name: Attach the bundle and publish the release
+    needs: [target, sign]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
+      -
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.target.outputs.commit }}
+      -
+        uses: actions/download-artifact@v8
+        with:
+          name: packslip-bundle
+          path: bundle
+      -
+        # Same uploader as the payload, for the same reason: re-running
+        # skips a bundle that is already attached and identical, and
+        # refuses to quietly swap one that is not.
+        name: Attach the signed bundle
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ci/publish_release_assets.sh "${{ needs.target.outputs.tag }}" bundle \
+              --repo "$GITHUB_REPOSITORY"
       -
         # Last, and only now: publishing is what makes a release
         # immutable, so nothing may still need adding after this. On a
@@ -196,12 +275,23 @@ jobs:
         with:
           ref: ${{ needs.target.outputs.commit }}
       -
+        name: Install packslip
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "v${PACKSLIP_VERSION}" --repo jdx/packslip \
+              --pattern "packslip-v${PACKSLIP_VERSION}-linux-x64" \
+              --output /usr/local/bin/packslip
+          sudo chmod +x /usr/local/bin/packslip
+      -
         # Downloads the release as a stranger would and checks it: the
-        # checksums, that every expected asset is present, and that the
-        # archive unpacks with its commands and permissions intact.
+        # checksums, that every expected asset is present, that the
+        # archive unpacks with its commands and permissions intact, and
+        # that the bundle verifies against this repository's identity.
         name: Verify
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           ci/verify_release.sh "${{ needs.target.outputs.tag }}" \
-              --repo "$GITHUB_REPOSITORY"
+              --repo "$GITHUB_REPOSITORY" \
+              --identity-prefix "https://github.com/$GITHUB_REPOSITORY/.github/workflows/main.yaml@"
