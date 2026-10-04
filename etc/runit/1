@@ -1,0 +1,57 @@
+#!/bin/sh
+# runit stage 1 - one-time preparation, for a container running as UID 0.
+# License: MIT
+#
+# runit runs this and waits for it to finish before starting stage 2. If it
+# exits 100 runit skips stage 2 and goes straight to stage 3, so anything
+# that genuinely makes the container useless exits 100 here rather than
+# leaving a supervision tree running over a broken base.
+#
+# Hooks: every readable /etc/runit/stage1.d/*.sh is sourced, in name order,
+# after the base preparation and before stage 2 starts.
+
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+export PATH
+
+msg() {
+	echo "stage 1: $*"
+}
+
+fatal() {
+	echo "stage 1: $*" >&2
+	exit 100
+}
+
+msg "preparing the container"
+
+# A container runtime supplies /proc, /sys and /dev; what it does not
+# supply is the writable state runsv, svlogd and sv expect to find.
+for dir in /run/runit /var/log /var/run; do
+	mkdir -p "$dir" || fatal "could not create $dir"
+done
+
+# runit only shuts down when it gets CONT and finds /etc/runit/stopit
+# executable. Create both control files unarmed (mode 0) so a stray signal
+# cannot stop the container and so ctrlaltdel only has to chmod them.
+for control in stopit reboot; do
+	if [ ! -e "/etc/runit/$control" ]; then
+		: >"/etc/runit/$control" || fatal "could not create /etc/runit/$control"
+	fi
+	chmod 0 "/etc/runit/$control"
+done
+
+# Without this, a crash in a service's own `run` script is reported against
+# a hostname of "localhost" in every container on the host.
+if [ -n "$HOSTNAME" ] && [ -w /etc/hostname ]; then
+	echo "$HOSTNAME" >/etc/hostname
+fi
+
+for hook in /etc/runit/stage1.d/*.sh; do
+	if [ -r "$hook" ]; then
+		msg "running hook $hook"
+		# shellcheck disable=SC1090  # supplied by the image, not by us
+		. "$hook"
+	fi
+done
+
+msg "ready, running stage 2"

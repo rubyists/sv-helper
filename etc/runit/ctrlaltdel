@@ -1,0 +1,14 @@
+#!/bin/sh
+# runit ctrl-alt-del handler - the container's stop path.
+# License: MIT
+#
+# runit as PID 1 accepts exactly two signals, and only during stage 2: INT
+# (a ctrl-alt-del request) and CONT (shut down, if /etc/runit/stopit is
+# executable). A container runtime's stop signal therefore has to be INT,
+# which runit answers by running this script and then signalling itself
+# CONT - so all this has to do is arm stopit. See the Containerfile's
+# STOPSIGNAL.
+
+echo "ctrlaltdel: shutting down"
+: >/etc/runit/stopit
+chmod 100 /etc/runit/stopit

@@ -1,0 +1,24 @@
+#!/bin/sh
+# runit stage 2 - the supervision tree.
+# License: MIT
+#
+# This is a thin wrapper around runsvdir.sh, which does the actual work and
+# is equally usable on its own by a regular user. An explicit SVDIR is
+# passed straight through; everything else runsvdir.sh resolves itself.
+#
+# /etc/runit/2 may also be a symlink to an installed runsvdir.sh, which is
+# why this file holds no policy of its own.
+
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+export PATH
+
+for candidate in runsvdir.sh /usr/local/bin/runsvdir.sh /usr/bin/runsvdir.sh; do
+	if command -v "$candidate" >/dev/null 2>&1; then
+		exec "$candidate"
+	fi
+done
+
+echo "stage 2: runsvdir.sh not found on PATH or in the usual prefixes" >&2
+# 111 tells runit to restart stage 2; this will not fix itself, so exit
+# normally instead and let runit move on to stage 3 and shut down.
+exit 1

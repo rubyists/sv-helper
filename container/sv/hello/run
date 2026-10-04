@@ -1,0 +1,9 @@
+#!/bin/sh
+# A service that just keeps talking, so supervision, logging and restart
+# are all visible from outside the container.
+exec 2>&1
+echo "hello: started as pid $$"
+while true; do
+	echo "hello: $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+	sleep 2
+done
