@@ -28,6 +28,12 @@ COMMANDS="sv-helper rsvlog runsvdir.sh"
 ALIASES="sv-start sv-stop sv-restart sv-list svls sv-enable sv-disable sv-find"
 DOCS="README.md COPYING CHANGELOG.md"
 STAGES="1 2 3 ctrlaltdel"
+# runit decides whether to stop, and how, by the mode of these two files,
+# and chmods stopit itself. Linking them into /run/runit, as Void does,
+# keeps them writable by whatever UID the container runs as, and /etc/runit
+# never has to be.
+CONTROLS="stopit reboot"
+CONTROL_DIR=/run/runit
 
 FORCE=0
 DRY_RUN=0
@@ -56,7 +62,8 @@ Usage: $PROG [COMMAND] [OPTIONS]
 Commands:
   install            Install the scripts and command links (default)
   uninstall          Remove the files and links install created
-  install-stages     Install runit stages 1, 2 and 3 for a container
+  install-stages     Install runit stages 1, 2 and 3 for a container, and
+                     link its stopit and reboot files into $CONTROL_DIR
   uninstall-stages   Remove those stages
   help               Show this message
 
@@ -268,6 +275,10 @@ do_install_stages() {
 		src=$(stage_source_for "$stage") || die "Could not find runit stage $stage in $SRC"
 		install_file "$src" "$RUNITDIR/$stage" 0755
 	done
+	for control in $CONTROLS
+	do
+		install_link "$CONTROL_DIR/$control" "$RUNITDIR/$control"
+	done
 	echo
 	echo "runit stages installed in $RUNITDIR"
 }
@@ -276,6 +287,10 @@ do_uninstall_stages() {
 	for stage in $STAGES; do
 		src=$(stage_source_for "$stage") || src=
 		remove_file "$src" "$RUNITDIR/$stage"
+	done
+	for control in $CONTROLS
+	do
+		remove_link "$CONTROL_DIR/$control" "$RUNITDIR/$control"
 	done
 }
 

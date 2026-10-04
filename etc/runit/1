@@ -1,5 +1,6 @@
 #!/bin/sh
-# runit stage 1 - one-time preparation, for a container running as UID 0.
+# runit stage 1 - one-time preparation, for a container running as UID 0
+# or as a regular user.
 # License: MIT
 #
 # runit runs this and waits for it to finish before starting stage 2. If it
@@ -22,22 +23,45 @@ fatal() {
 	exit 100
 }
 
-msg "preparing the container"
+uid=$(id -u)
+
+msg "preparing the container as uid $uid"
 
 # A container runtime supplies /proc, /sys and /dev; what it does not
-# supply is the writable state runsv, svlogd and sv expect to find.
-for dir in /run/runit /var/log /var/run; do
-	mkdir -p "$dir" || fatal "could not create $dir"
+# supply is the writable state runsv, svlogd and sv expect to find. Root
+# makes it. A regular user cannot create anything in /run, and must not be
+# handed a way to, so the image creates /run/runit for it instead - see
+# container/Containerfile.unprivileged. Every other piece of state a
+# regular user's services need is under its own home, as it is on a host.
+if [ "$uid" -eq 0 ]
+then
+	dirs="/run/runit /var/log /var/run"
+else
+	dirs=/run/runit
+fi
+for dir in $dirs
+do
+	mkdir -p "$dir" 2>/dev/null || fatal "could not create $dir as uid $uid"
+	[ -w "$dir" ] || fatal "$dir is not writable by uid $uid, the image has to give it to this user"
 done
 
 # runit only shuts down when it gets CONT and finds /etc/runit/stopit
 # executable. Create both control files unarmed (mode 0) so a stray signal
 # cannot stop the container and so ctrlaltdel only has to chmod them.
-for control in stopit reboot; do
-	if [ ! -e "/etc/runit/$control" ]; then
-		: >"/etc/runit/$control" || fatal "could not create /etc/runit/$control"
+#
+# install-stages links both into /run/runit, so this follows the link and
+# creates them there, owned by whoever this is. A container that cannot
+# arm stopit cannot be stopped without being killed, which is worth
+# refusing to boot over.
+for control in stopit reboot
+do
+	file=/etc/runit/$control
+	if [ ! -e "$file" ]
+	then
+		: >"$file" 2>/dev/null || fatal "could not create $file as uid $uid"
 	fi
-	chmod 0 "/etc/runit/$control"
+	chmod 0 "$file" 2>/dev/null ||
+		fatal "$file is not ours to change as uid $uid, so link it into /run/runit (install-stages does)"
 done
 
 # Without this, a crash in a service's own `run` script is reported against

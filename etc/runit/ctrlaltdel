@@ -10,5 +10,8 @@
 # STOPSIGNAL.
 
 echo "ctrlaltdel: shutting down"
-: >/etc/runit/stopit
+# Stage 1 left stopit in place at mode 0, which root can write through but
+# its owner cannot - so a regular user only ever changes its mode, and the
+# file is only created if something removed it.
+[ -e /etc/runit/stopit ] || : >/etc/runit/stopit
 chmod 100 /etc/runit/stopit

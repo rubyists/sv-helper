@@ -23,9 +23,19 @@ msg() {
 	echo "stage 3: $*"
 }
 
+# The tree stage 2 supervised, found the way runsvdir.sh found it: an
+# explicit SVDIR, then the invoking user's default. A regular user's tree
+# is the same one it would supervise on a host, never a system tree.
 find_svdir() {
 	if [ -n "$SVDIR" ] && [ -d "$SVDIR" ]; then
 		printf '%s\n' "$SVDIR"
+		return 0
+	fi
+	if [ "$(id -u)" -ne 0 ]
+	then
+		dir=${XDG_STATE_HOME:-$HOME/.local/state}/sv-helper/service
+		[ -d "$dir" ] || return 1
+		printf '%s\n' "$dir"
 		return 0
 	fi
 	for dir in /service /var/service /etc/service; do

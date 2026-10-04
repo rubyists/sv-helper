@@ -158,17 +158,17 @@ log layout is never moved out from under the logs already in it.
 
 ## Containers
 
-`etc/runit/{1,2,3}` are a complete runit lifecycle for a container
-running as root, with `runsvdir.sh` as stage 2 — the same script a
-regular user runs on a host. Installing them is a separate, explicit
+`etc/runit/{1,2,3}` are a complete runit lifecycle for a container,
+running as root or as a regular user, with `runsvdir.sh` as stage 2 —
+the same script a regular user runs on a host. Installing them is a separate, explicit
 step, because dropping files into `/etc/runit` changes how the machine
 boots:
 
     ./install.sh install-stages
 
-See [container/Readme.md](container/Readme.md) for a working
-`Containerfile`, how stopping works, and what to expect when a service
-fails.
+See [container/Readme.md](container/Readme.md) for working
+`Containerfile`s for both, how stopping works, and what to expect when a
+service fails.
 
 ## Development
 
