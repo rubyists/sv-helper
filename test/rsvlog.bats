@@ -21,7 +21,8 @@ setup() {
 
     STUBS="$TEST_TMP/stubs"
     mkdir -p "$STUBS"
-    for tool in svlogd logger chpst; do
+    for tool in svlogd logger chpst
+    do
         {
             echo '#!/bin/sh'
             echo "echo \"STUB-$tool \$*\""

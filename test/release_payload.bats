@@ -37,7 +37,8 @@ setup() {
 
 @test "every asset matches the checksums published beside it" {
     cd "$PAYLOAD"
-    if command -v sha256sum >/dev/null 2>&1; then
+    if command -v sha256sum >/dev/null 2>&1
+    then
         run sha256sum -c SHA256SUMS
     else
         run shasum -a 256 -c SHA256SUMS
@@ -57,7 +58,8 @@ setup() {
 }
 
 @test "the archive ships the scripts under their public names" {
-    for name in bin/sv-helper bin/rsvlog bin/runsvdir.sh; do
+    for name in bin/sv-helper bin/rsvlog bin/runsvdir.sh
+    do
         assert [ -f "$TREE/$name" ]
         assert [ -x "$TREE/$name" ]
     done
@@ -66,7 +68,8 @@ setup() {
 @test "the archive ships the command links, so unpacking is enough" {
     # Unpacking the archive and putting bin/ on PATH has to give every
     # command, without running the installer first.
-    for name in sv-start sv-stop sv-restart sv-list svls sv-enable sv-disable sv-find; do
+    for name in sv-start sv-stop sv-restart sv-list svls sv-enable sv-disable sv-find
+    do
         assert [ -L "$TREE/bin/$name" ]
         assert_equal "$(readlink "$TREE/bin/$name")" "sv-helper"
     done
@@ -75,7 +78,8 @@ setup() {
 @test "the archive bundles the installer and the container stages" {
     assert [ -f "$TREE/install.sh" ]
     assert [ -x "$TREE/install.sh" ]
-    for stage in 1 2 3 ctrlaltdel; do
+    for stage in 1 2 3 ctrlaltdel
+    do
         assert [ -f "$TREE/etc/runit/$stage" ]
     done
 }

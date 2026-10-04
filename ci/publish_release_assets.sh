@@ -24,7 +24,8 @@ DIR=$2
 shift 2 2>/dev/null || true
 
 REPO=${GH_REPO:-}
-while [ $# -gt 0 ]; do
+while [ $# -gt 0 ]
+do
 	case "$1" in
 	--repo)
 		REPO=$2
@@ -37,7 +38,8 @@ while [ $# -gt 0 ]; do
 	esac
 done
 
-if [ -z "$TAG" ] || [ -z "$DIR" ]; then
+if [ -z "$TAG" ] || [ -z "$DIR" ]
+then
 	echo "Usage: $0 TAG DIR [--repo OWNER/REPO]" >&2
 	exit 2
 fi
@@ -53,7 +55,8 @@ WORK=$(mktemp -d "${TMPDIR:-/tmp}/sv-helper-publish.XXXXXX")
 trap 'rm -rf "$WORK"' EXIT INT TERM
 
 digest() {
-	if command -v sha256sum >/dev/null 2>&1; then
+	if command -v sha256sum >/dev/null 2>&1
+	then
 		sha256sum "$1" | cut -d' ' -f1
 	else
 		shasum -a 256 "$1" | cut -d' ' -f1
@@ -71,11 +74,13 @@ has_asset() {
 uploaded=0
 skipped=0
 
-for path in "$DIR"/*; do
+for path in "$DIR"/*
+do
 	[ -f "$path" ] || continue
 	name=$(basename "$path")
 
-	if ! has_asset "$name"; then
+	if ! has_asset "$name"
+	then
 		echo "uploading $name"
 		# shellcheck disable=SC2086
 		gh release upload "$TAG" "$path" $REPO_ARGS
@@ -88,7 +93,8 @@ for path in "$DIR"/*; do
 	# shellcheck disable=SC2086
 	gh release download "$TAG" $REPO_ARGS --pattern "$name" --dir "$WORK/check"
 
-	if [ "$(digest "$path")" = "$(digest "$WORK/check/$name")" ]; then
+	if [ "$(digest "$path")" = "$(digest "$WORK/check/$name")" ]
+	then
 		echo "skipping  $name (already published, identical)"
 		skipped=$((skipped + 1))
 		continue

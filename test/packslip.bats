@@ -9,7 +9,8 @@ setup_file() {
     REPO_ROOT=$(cd "${BATS_TEST_DIRNAME}/.." && pwd -P)
     export REPO_ROOT
 
-    if ! command -v packslip >/dev/null 2>&1; then
+    if ! command -v packslip >/dev/null 2>&1
+    then
         export PACKSLIP_SKIP="packslip is not installed"
         return 0
     fi
@@ -59,7 +60,8 @@ for a in doc['predicate']['artifacts']:
     run packslip show "$BUNDLE"
     assert_success
     for name in sv-helper-linux.tar.gz sv-helper-darwin.tar.gz \
-                sv-helper.sh rsvlog runsvdir.sh; do
+                sv-helper.sh rsvlog runsvdir.sh
+    do
         assert_output --partial "\"$name\""
     done
 }
@@ -73,7 +75,8 @@ for a in doc['predicate']['artifacts']:
     # Shell scripts run anywhere. Left to infer, packslip reads libc from
     # the executables, fails to parse a script, and settles on gnu -
     # which would make a consumer refuse to install on Alpine.
-    for name in sv-helper-linux.tar.gz sv-helper-darwin.tar.gz; do
+    for name in sv-helper-linux.tar.gz sv-helper-darwin.tar.gz
+    do
         assert_equal "$(artifact_field "$name" arch)" "null"
         assert_equal "$(artifact_field "$name" libc)" "null"
     done
@@ -86,7 +89,8 @@ for a in doc['predicate']['artifacts']:
     # two artifacts tied for the same platform.
     assert_equal "$(artifact_field sv-helper-linux.tar.gz variant)" "null"
     assert_equal "$(artifact_field sv-helper-darwin.tar.gz variant)" "null"
-    for name in sv-helper.sh rsvlog runsvdir.sh; do
+    for name in sv-helper.sh rsvlog runsvdir.sh
+    do
         refute [ "$(artifact_field "$name" variant)" = "null" ]
     done
 }
@@ -95,7 +99,8 @@ for a in doc['predicate']['artifacts']:
     local bins
     bins=$(artifact_field sv-helper-linux.tar.gz bin)
     for name in sv-helper sv-start sv-stop sv-restart sv-list svls \
-                sv-enable sv-disable sv-find rsvlog runsvdir.sh; do
+                sv-enable sv-disable sv-find rsvlog runsvdir.sh
+    do
         assert [ "${bins#*/bin/$name\"}" != "$bins" ]
     done
 }

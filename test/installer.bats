@@ -26,7 +26,8 @@ install_here() {
     run install_here
     assert_success
 
-    for name in sv-helper rsvlog runsvdir.sh; do
+    for name in sv-helper rsvlog runsvdir.sh
+    do
         assert [ -f "$BIN/$name" ]
         assert [ ! -L "$BIN/$name" ]
         assert [ -x "$BIN/$name" ]
@@ -36,7 +37,8 @@ install_here() {
 @test "installs every command alias as a relative link to sv-helper" {
     install_here
 
-    for name in $ALIASES; do
+    for name in $ALIASES
+    do
         assert [ -L "$BIN/$name" ]
         # Relative, so the links still resolve after the tree is moved,
         # staged into a package, or unpacked somewhere else entirely.
@@ -108,7 +110,8 @@ install_here() {
     run "$INSTALL" uninstall --prefix "$PREFIX"
     assert_success
 
-    for name in sv-helper rsvlog runsvdir.sh $ALIASES; do
+    for name in sv-helper rsvlog runsvdir.sh $ALIASES
+    do
         refute [ -e "$BIN/$name" ]
         refute [ -L "$BIN/$name" ]
     done
@@ -164,7 +167,8 @@ install_here() {
     run "$INSTALL" install-stages --destdir "$stage"
     assert_success
 
-    for name in 1 2 3 ctrlaltdel; do
+    for name in 1 2 3 ctrlaltdel
+    do
         assert [ -f "$stage/etc/runit/$name" ]
         assert [ -x "$stage/etc/runit/$name" ]
     done

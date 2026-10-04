@@ -3,7 +3,8 @@
 # are all visible from outside the container.
 exec 2>&1
 echo "hello: started as pid $$"
-while true; do
+while true
+do
 	echo "hello: $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
 	sleep 2
 done

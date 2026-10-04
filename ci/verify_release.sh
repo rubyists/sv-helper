@@ -17,7 +17,8 @@ shift 2>/dev/null || true
 
 REPO=${GH_REPO:-rubyists/sv-helper}
 IDENTITY_PREFIX=""
-while [ $# -gt 0 ]; do
+while [ $# -gt 0 ]
+do
 	case "$1" in
 	--repo)
 		REPO=$2
@@ -58,7 +59,8 @@ gh release download "$TAG" --repo "$REPO" --dir "$WORK" --clobber
 echo "Checking every asset against SHA256SUMS"
 (
 	cd "$WORK"
-	if command -v sha256sum >/dev/null 2>&1; then
+	if command -v sha256sum >/dev/null 2>&1
+	then
 		sha256sum -c SHA256SUMS
 	else
 		shasum -a 256 -c SHA256SUMS
@@ -70,7 +72,8 @@ echo "Checking every asset against SHA256SUMS"
 for required in \
 	sv-helper-linux.tar.gz \
 	sv-helper-darwin.tar.gz \
-	rsvlog sv-helper.sh runsvdir.sh; do
+	rsvlog sv-helper.sh runsvdir.sh
+do
 	[ -f "$WORK/$required" ] || fail "the release is missing $required"
 done
 echo "All expected assets are present"
@@ -82,17 +85,21 @@ mkdir -p "$unpack"
 tar -xzf "$WORK/sv-helper-linux.tar.gz" -C "$unpack" ||
 	fail "the linux archive does not unpack"
 tree="$unpack/sv-helper-$VERSION"
-for expected in bin/sv-helper bin/rsvlog bin/runsvdir.sh install.sh etc/runit/3; do
+for expected in bin/sv-helper bin/rsvlog bin/runsvdir.sh install.sh etc/runit/3
+do
 	[ -e "$tree/$expected" ] || fail "the archive is missing $expected"
 done
 [ -x "$tree/bin/sv-helper" ] || fail "bin/sv-helper is not executable in the archive"
-for alias_name in sv-start sv-stop sv-restart sv-list svls sv-enable sv-disable sv-find; do
+for alias_name in sv-start sv-stop sv-restart sv-list svls sv-enable sv-disable sv-find
+do
 	[ -L "$tree/bin/$alias_name" ] || fail "the archive is missing the $alias_name link"
 done
 echo "The archive contains the commands and keeps their permissions"
 
-if [ -f "$WORK/packslip.sigstore.json" ]; then
-	if ! command -v packslip >/dev/null 2>&1; then
+if [ -f "$WORK/packslip.sigstore.json" ]
+then
+	if ! command -v packslip >/dev/null 2>&1
+	then
 		echo "packslip is not installed; skipping signature verification" >&2
 	else
 		echo "Verifying the packslip bundle"
@@ -108,7 +115,8 @@ if [ -f "$WORK/packslip.sigstore.json" ]; then
 		# for, so compare that here.
 		signed_version=$(packslip show "$WORK/packslip.sigstore.json" --json 2>/dev/null |
 			sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
-		if [ -n "$signed_version" ] && [ "$signed_version" != "$VERSION" ]; then
+		if [ -n "$signed_version" ] && [ "$signed_version" != "$VERSION" ]
+		then
 			fail "the bundle describes version $signed_version, not $VERSION"
 		fi
 		echo "The bundle verifies against $IDENTITY_PREFIX"

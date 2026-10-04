@@ -66,12 +66,15 @@ done
 
 # Without this, a crash in a service's own `run` script is reported against
 # a hostname of "localhost" in every container on the host.
-if [ -n "$HOSTNAME" ] && [ -w /etc/hostname ]; then
+if [ -n "$HOSTNAME" ] && [ -w /etc/hostname ]
+then
 	echo "$HOSTNAME" >/etc/hostname
 fi
 
-for hook in /etc/runit/stage1.d/*.sh; do
-	if [ -r "$hook" ]; then
+for hook in /etc/runit/stage1.d/*.sh
+do
+	if [ -r "$hook" ]
+	then
 		msg "running hook $hook"
 		# shellcheck disable=SC1090  # supplied by the image, not by us
 		. "$hook"

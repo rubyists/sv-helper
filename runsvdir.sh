@@ -43,16 +43,20 @@ is_root() {
 # Homebrew's launch agent gives a minimal PATH, so probe the standard
 # prefixes rather than requiring an interactive shell environment.
 brew_prefix() {
-	if [ -n "$HOMEBREW_PREFIX" ]; then
+	if [ -n "$HOMEBREW_PREFIX" ]
+	then
 		printf '%s\n' "$HOMEBREW_PREFIX"
 		return 0
 	fi
-	if command -v brew >/dev/null 2>&1; then
+	if command -v brew >/dev/null 2>&1
+	then
 		brew --prefix
 		return 0
 	fi
-	for prefix in /opt/homebrew /usr/local /home/linuxbrew/.linuxbrew; do
-		if [ -x "$prefix/bin/brew" ]; then
+	for prefix in /opt/homebrew /usr/local /home/linuxbrew/.linuxbrew
+	do
+		if [ -x "$prefix/bin/brew" ]
+		then
 			printf '%s\n' "$prefix"
 			return 0
 		fi
@@ -68,7 +72,8 @@ brew_prefix() {
 ensure_runit_on_path() {
 	command -v runsvdir >/dev/null 2>&1 && return 0
 	prefix=$(brew_prefix) || return 0
-	for dir in "$prefix/opt/runit/bin" "$prefix/bin" "$prefix/sbin"; do
+	for dir in "$prefix/opt/runit/bin" "$prefix/bin" "$prefix/sbin"
+	do
 		case ":$PATH:" in
 		*":$dir:"*) ;;
 		*) [ -d "$dir" ] && PATH="$PATH:$dir" ;;
@@ -83,7 +88,8 @@ script_dir() {
 	dir=$(dirname "$0")
 	target=$0
 	# Follow at most a few links; a longer chain is a loop worth failing on.
-	for _ in 1 2 3 4 5 6 7 8; do
+	for _ in 1 2 3 4 5 6 7 8
+	do
 		[ -L "$target" ] || break
 		link=$(readlink "$target")
 		case "$link" in
@@ -106,9 +112,11 @@ pick_by_hostname() {
 		"$first_level_host" \
 		"$second_level_host" \
 		"${SV_PREFIX}${first_level_host}" \
-		"${SV_PREFIX}${second_level_host}"; do
+		"${SV_PREFIX}${second_level_host}"
+	do
 		[ -n "$candidate" ] || continue
-		if [ -d "$service_root/$candidate" ]; then
+		if [ -d "$service_root/$candidate" ]
+		then
 			printf '%s\n' "$service_root/$candidate"
 			return 0
 		fi
@@ -120,16 +128,20 @@ pick_by_hostname() {
 }
 
 default_svdir() {
-	if [ "$(uname -s)" = Darwin ]; then
+	if [ "$(uname -s)" = Darwin ]
+	then
 		prefix=$(brew_prefix) ||
 			die "Homebrew not found. sv-helper needs Homebrew's runit on macOS: https://brew.sh"
 		printf '%s/var/service\n' "$prefix"
 		return 0
 	fi
 
-	if is_root; then
-		for dir in /var/service /service /etc/service; do
-			if [ -d "$dir" ]; then
+	if is_root
+	then
+		for dir in /var/service /service /etc/service
+		do
+			if [ -d "$dir" ]
+			then
 				printf '%s\n' "$dir"
 				return 0
 			fi
@@ -143,7 +155,8 @@ default_svdir() {
 
 ensure_runit_on_path
 
-if [ -z "$HOSTNAME" ]; then
+if [ -z "$HOSTNAME" ]
+then
 	hostname=$(hostname)
 	warn "HOSTNAME not set, using $hostname"
 else
@@ -151,9 +164,11 @@ else
 	warn "HOSTNAME is $hostname"
 fi
 
-if [ -n "$SVDIR" ]; then
+if [ -n "$SVDIR" ]
+then
 	servicedir=$SVDIR
-elif [ -n "$SV_ROOT" ]; then
+elif [ -n "$SV_ROOT" ]
+then
 	[ -d "$SV_ROOT/service" ] || die "SV_ROOT is set but $SV_ROOT/service does not exist"
 	servicedir=$(pick_by_hostname "$SV_ROOT/service")
 else
@@ -161,7 +176,8 @@ else
 	# as it did before SV_ROOT existed. Guarded so an installed copy in
 	# /bin never mistakes the system's own /service for its checkout.
 	legacy_root=$(cd "$(script_dir)/.." && pwd -P)
-	if [ "$legacy_root" != "/" ] && [ -d "$legacy_root/service" ]; then
+	if [ "$legacy_root" != "/" ] && [ -d "$legacy_root/service" ]
+	then
 		warn "Using $legacy_root/service beside this script; set SV_ROOT to make that explicit"
 		servicedir=$(pick_by_hostname "$legacy_root/service")
 	else
@@ -171,7 +187,8 @@ fi
 
 # Prepare the tree rather than refusing to start: a regular user running
 # this directly has no stage 1 to have made it for them.
-if [ ! -d "$servicedir" ]; then
+if [ ! -d "$servicedir" ]
+then
 	mkdir -p "$servicedir" || die "Could not create $servicedir"
 	warn "Created $servicedir"
 fi
@@ -180,8 +197,10 @@ fi
 # point it at this tree for the convenience of anything run later. It never
 # replaces a real directory, and it never changes which tree is actually
 # supervised - an explicit SVDIR stays exactly what was asked for.
-if is_root && [ "$servicedir" != "/service" ]; then
-	if [ ! -e /service ] || [ -L /service ]; then
+if is_root && [ "$servicedir" != "/service" ]
+then
+	if [ ! -e /service ] || [ -L /service ]
+	then
 		ln -sfn "$servicedir" /service
 	fi
 fi

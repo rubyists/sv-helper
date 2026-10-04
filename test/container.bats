@@ -17,7 +17,8 @@ setup_file() {
     REPO_ROOT=$(cd "${BATS_TEST_DIRNAME}/.." && pwd -P)
     export REPO_ROOT
 
-    if ! ENGINE=$(container_engine); then
+    if ! ENGINE=$(container_engine)
+    then
         export CONTAINER_SKIP="neither podman nor docker is installed"
         return 0
     fi
@@ -84,7 +85,8 @@ in_container() {
     # catch it while it is down and see no pid at all. Sample across
     # several restarts and count the distinct pids runsv handed out.
     local pids="" pid i=0
-    while [ "$i" -lt 12 ]; do
+    while [ "$i" -lt 12 ]
+    do
         pid=$(in_container svls crasher 2>/dev/null | service_pid)
         case " $pids " in
             *" $pid "*) ;;
