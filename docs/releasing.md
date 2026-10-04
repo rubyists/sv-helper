@@ -15,7 +15,8 @@ from Conventional Commits on `main`. There is nothing to run by hand.
    - attaches it with `ci/publish_release_assets.sh`;
    - signs it with packslip, in a job that cannot write to the release;
    - attaches the signed bundle and **publishes** the release;
-   - verifies the published release as a stranger would.
+   - verifies the published release as a stranger would;
+   - opens a pull request against `rubyists/homebrew-tap`.
 
 The release stays a draft until everything is attached, on purpose.
 GitHub's Immutable Releases locks a release's assets the moment it is
@@ -101,7 +102,7 @@ recovery path is useful only before publication.
 
 | Secret | Why |
 | --- | --- |
-| `RELEASE_PLEASE_TOKEN` | An org secret. A release created with the built-in `GITHUB_TOKEN` starts no further workflows, which would stall the pipeline. |
+| `RELEASE_PLEASE_TOKEN` | An org secret. The built-in `GITHUB_TOKEN` is scoped to this repository, so it cannot open a pull request against `rubyists/homebrew-tap`; and a release created with it starts no further workflows. |
 | `GITHUB_TOKEN` | Everything else, with permissions granted per job. |
 
 Job permissions are deliberately uneven. The signing job has
@@ -114,3 +115,7 @@ release it is describing.
 `PKGBUILD`'s `pkgver` is bumped by release-please along with everything
 else. Its `sha256sums` is not — refresh it with `updpkgsums`, or from the
 release's own `SHA256SUMS`, when publishing to the AUR.
+
+The Homebrew formula is updated automatically; see
+`ci/bump_homebrew_formula.sh`, which can be run locally against a
+release's `SHA256SUMS` to see exactly what the workflow would write.

@@ -6,6 +6,10 @@ PID 1 in a container.
 
 ## Install
 
+Homebrew, on macOS or Linux:
+
+    brew install rubyists/tap/sv-helper
+
 From a release archive, with no package manager at all:
 
     curl -fsSLO https://github.com/rubyists/sv-helper/releases/latest/download/sv-helper-linux.tar.gz
