@@ -14,10 +14,16 @@ From a release archive, with no package manager at all:
     ./install.sh
 
 Replace `linux` with `darwin` on macOS. Each release also publishes
-`rsvlog`, `sv-helper.sh` and `runsvdir.sh` on their own, and a
-`SHA256SUMS` covering everything:
+`rsvlog`, `sv-helper.sh` and `runsvdir.sh` on their own, a `SHA256SUMS`
+covering everything, and a signed [packslip](https://packslip.dev)
+bundle. To check what you downloaded:
 
     sha256sum -c SHA256SUMS --ignore-missing
+
+    packslip verify packslip.sigstore.json \
+      --identity-prefix 'https://github.com/rubyists/sv-helper/.github/workflows/main.yaml@' \
+      --issuer https://token.actions.githubusercontent.com \
+      --artifact sv-helper-linux.tar.gz
 
 See [docs/releasing.md](docs/releasing.md) for how releases are built
 and verified.
