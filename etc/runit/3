@@ -1,0 +1,72 @@
+#!/bin/sh
+# runit stage 3 - shutdown.
+# License: MIT
+#
+# runit has already terminated stage 2 by the time this runs, so runsvdir
+# is gone and its runsv children have been reparented to runit itself. They
+# are still supervising, so they are stopped here, in two steps:
+#
+#   1. force-stop   each service goes down, and is killed if it will not
+#   2. shutdown     each runsv exits, which closes its log service's stdin
+#                   and waits for the log service to drain and terminate
+#
+# Both steps are bounded by SV_STOP_TIMEOUT seconds (default 25), chosen to
+# finish inside a container runtime's usual 30 second stop timeout so the
+# container exits on its own rather than being killed.
+
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+export PATH
+
+timeout=${SV_STOP_TIMEOUT:-25}
+
+msg() {
+	echo "stage 3: $*"
+}
+
+find_svdir() {
+	if [ -n "$SVDIR" ] && [ -d "$SVDIR" ]; then
+		printf '%s\n' "$SVDIR"
+		return 0
+	fi
+	for dir in /service /var/service /etc/service; do
+		if [ -d "$dir" ]; then
+			printf '%s\n' "$dir"
+			return 0
+		fi
+	done
+	return 1
+}
+
+svdir=$(find_svdir) || {
+	msg "no service directory found; nothing to stop"
+	exit 0
+}
+
+services=""
+for service in "$svdir"/*; do
+	[ -d "$service" ] || continue
+	services="$services $service"
+done
+
+if [ -z "$services" ]; then
+	msg "no services in $svdir"
+else
+	msg "stopping services in $svdir (timeout ${timeout}s)"
+	# shellcheck disable=SC2086  # each service is a separate argument
+	sv -w "$timeout" force-stop $services || msg "some services did not stop cleanly"
+
+	msg "letting log services finish"
+	# shellcheck disable=SC2086
+	sv -w "$timeout" shutdown $services || msg "some log services did not finish in time"
+fi
+
+for hook in /etc/runit/stage3.d/*.sh; do
+	if [ -r "$hook" ]; then
+		msg "running hook $hook"
+		# shellcheck disable=SC1090  # supplied by the image, not by us
+		. "$hook"
+	fi
+done
+
+sync
+msg "done"
