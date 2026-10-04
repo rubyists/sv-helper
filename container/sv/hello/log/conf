@@ -1,0 +1,4 @@
+# Read by rsvlog (linked here as ./run). See the repository's `conf` file
+# for every setting; this one just names the directory under the log base,
+# which inside the container resolves to /var/log/hello.
+SV_LOGDIR=hello
