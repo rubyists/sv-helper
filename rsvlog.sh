@@ -30,7 +30,7 @@
 set -e
 
 # release-please rewrites this line on every release, through the marker.
-sv_version=4.1.0 # x-release-please-version
+sv_version=4.2.0 # x-release-please-version
 
 # Answered before the checks below, which only make sense for the log
 # service itself, so the installed command can say what it is.

@@ -74,7 +74,7 @@ Every command, `rsvlog` and `runsvdir.sh` included, also takes
 <!-- x-release-please-start-version -->
 
     $ svls --version
-    svls (sv-helper) 4.1.0
+    svls (sv-helper) 4.2.0
 
 <!-- x-release-please-end -->
 

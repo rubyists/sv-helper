@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.2.0](https://github.com/rubyists/sv-helper/compare/v4.1.0...v4.2.0) (2026-10-04)
+
+
+### Features
+
+* Add --version to every command ([#35](https://github.com/rubyists/sv-helper/issues/35)) ([3a46b60](https://github.com/rubyists/sv-helper/commit/3a46b60f54630ab4954c015bd9fb62399d8117a0))
+
 ## [4.1.0](https://github.com/rubyists/sv-helper/compare/v4.0.1...v4.1.0) (2026-10-04)
 
 
