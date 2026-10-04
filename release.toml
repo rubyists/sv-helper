@@ -1,0 +1,94 @@
+# What packslip signs for each release: every published file, what is
+# inside it, and where it runs. Read by `packslip create --manifest` in
+# the release workflow, after ci/build_release_payload.sh has written
+# dist/.
+#
+# project, version, url_base, notes_url and [source] are set by the
+# workflow from the release being published, and are deliberately not
+# here - a version in this file would be one more thing to forget. That
+# is also why the archive names carry no version: packslip needs an exact
+# path, not a glob, so this file stays static and checked in.
+#
+# Everything sv-helper ships is a POSIX shell script, so no artifact
+# records an architecture or a C library. `arch = "any"` and
+# `libc = "any"` say that explicitly; leaving them out would make
+# packslip infer `gnu` from unreadable executables and refuse a musl host
+# such as Alpine, which these scripts run on perfectly well.
+
+# The commands every artifact provides. Plain names, which packslip
+# resolves to their real paths inside each archive, so the versioned
+# directory at the archive root never has to be spelled out here.
+#
+# sv-helper dispatches on the name it was called by: all eight aliases
+# are links to the same script, and all eight have to be declared, or a
+# packslip install would export only one of them.
+bin = [
+  "sv-helper",
+  "sv-start",
+  "sv-stop",
+  "sv-restart",
+  "sv-list",
+  "svls",
+  "sv-enable",
+  "sv-disable",
+  "sv-find",
+  "rsvlog",
+  "runsvdir.sh",
+]
+
+# runit itself is not ours to install. `sv` and `runsvdir` are what the
+# helpers drive, so without them nothing here does anything.
+#
+# The logging tools are deliberately absent: svlogd and chpst are only
+# needed by services that log through rsvlog, and `logger` only in syslog
+# mode, so a host without them can still use everything else.
+requires = { bin = [{ name = "sv" }, { name = "runsvdir" }] }
+
+# The suite. These two are the only artifacts without a variant, so a
+# consumer that is simply asked to install sv-helper gets the whole thing
+# for its own platform, and never a single loose script.
+[[artifact]]
+path = "dist/sv-helper-linux.tar.gz"
+os = "linux"
+arch = "any"
+libc = "any"
+
+# macOS needs Homebrew's runit (`brew install runit`): sv-helper uses its
+# prefix for the service tree and the logs, and `brew services start
+# runit` is the supported way to keep a supervision tree running across
+# logins. Installing sv-helper itself through packslip does not change
+# that.
+[[artifact]]
+path = "dist/sv-helper-darwin.tar.gz"
+os = "darwin"
+arch = "any"
+
+# The individual scripts, for anyone who wants one file rather than the
+# suite. Each carries a variant naming the script it is, which keeps them
+# out of default selection: without one they would tie with the archives
+# and with each other, and a consumer could install `rsvlog` alone and
+# believe it had installed sv-helper.
+[[artifact]]
+path = "dist/sv-helper.sh"
+portable = true
+format = "raw"
+variant = "sv-helper-only"
+bin = [{ name = "sv-helper", path = "sv-helper.sh" }]
+
+[[artifact]]
+path = "dist/rsvlog"
+portable = true
+format = "raw"
+variant = "rsvlog-only"
+bin = ["rsvlog"]
+# rsvlog is the one component that does need a logger: it is a service's
+# log/run script and ends in `exec svlogd`.
+requires = { bin = [{ name = "svlogd" }] }
+
+[[artifact]]
+path = "dist/runsvdir.sh"
+portable = true
+format = "raw"
+variant = "runsvdir-only"
+bin = [{ name = "runsvdir.sh", path = "runsvdir.sh" }]
+requires = { bin = [{ name = "runsvdir" }] }

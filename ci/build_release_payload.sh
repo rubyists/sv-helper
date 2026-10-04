@@ -1,7 +1,7 @@
 #!/bin/sh
 # Builds the release payload: the archives, the individual scripts, and
 # their checksums. Everything downstream - manual download, the Homebrew
-# formula, release signing - consumes exactly these files.
+# formula, packslip - consumes exactly these files.
 #
 #   ci/build_release_payload.sh VERSION [OUTDIR]
 #
@@ -10,7 +10,7 @@
 #
 # The contents come from an explicit list, never from "everything in the
 # working tree", so an untracked checkout sitting in the repository - a
-# scratch directory, a sibling checkout - can never end up in a
+# local packslip clone, a scratch directory - can never end up in a
 # release. The archives are built reproducibly (sorted entries, fixed
 # timestamps, no owner names, gzip without its own timestamp), so building
 # the same commit twice produces the same bytes and the recovery path in
@@ -82,10 +82,11 @@ runsvdir.sh:runsvdir.sh
 # so each one records the OS it is supported on rather than claiming to run
 # anywhere unchecked.
 #
-# Their names carry no version. The version is in the tag, in the
-# download URL, and in the directory inside the archive, and a stable
-# name is what lets the things that describe a release refer to these
-# files without being regenerated for every one of them.
+# Their names carry no version, so that release.toml - which packslip
+# needs to give an exact path, not a glob - can be a static checked-in
+# file rather than something generated per release. The version is still
+# in the tag, in the download URL, in the directory inside the archive,
+# and in the signed release statement.
 PLATFORMS="linux darwin"
 
 die() {
