@@ -1,0 +1,50 @@
+---
+name: ci
+
+on:  # yamllint disable-line rule:truthy
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # Both legs matter and they fail for different reasons, so let the
+      # other finish rather than cancelling it.
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      -
+        uses: actions/checkout@v7
+        with:
+          # bats and its helper libraries are submodules; without this
+          # the suite cannot run at all.
+          submodules: recursive
+      -
+        # Debian's `runit` package ships sv, runsv, runsvdir, svlogd and
+        # chpst. `runit-init`, the one that replaces init, is a separate
+        # package and is deliberately not installed.
+        name: Install runit and shellcheck
+        if: runner.os == 'Linux'
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y runit shellcheck
+      -
+        # The real thing the macOS support is written against: sv is
+        # patched by this formula to default to $(brew --prefix)/var/service,
+        # and `brew services start runit` is the supported supervisor.
+        name: Install runit and shellcheck
+        if: runner.os == 'macOS'
+        run: brew install runit shellcheck
+      -
+        # Docker is present on the Linux runners, so the container suite
+        # runs there and skips itself on macOS.
+        name: Run the test suite
+        run: make test
