@@ -68,6 +68,16 @@ All of them are the same script, `sv-helper.sh`, dispatching on the name
 it was called by. `sv-helper paths` is the one to reach for when a
 service turns up somewhere unexpected.
 
+As a regular user they manage your own services. Root's services are
+root's: runsv lets only the account that runs it ask about a service, so
+pointing `SVDIR` at a system tree gets you an explanation and the
+command to run instead, never a silent `sudo`:
+
+    $ SVDIR=/var/service svls
+    Listing All Services
+    Cannot ask runsv about 40 service(s) in /var/service as tj: they belong to root.
+    Run it as root instead: sudo env SVDIR=/var/service svls
+
 Every command, `rsvlog` and `runsvdir.sh` included, also takes
 `--version`:
 
