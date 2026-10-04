@@ -1,0 +1,57 @@
+# A container with runit as PID 1 running as a regular user, supervising
+# sv-helper's services exactly as that user would on a host. Build from
+# the repository root:
+#
+#   podman build -f container/Containerfile.unprivileged -t sv-helper-user .
+#   podman run --rm --cap-add SYS_BOOT --name sv-helper-user sv-helper-user
+#   podman stop sv-helper-user        # exits through stage 3, no forced kill
+#
+# Nothing in it runs as root once it starts, and nothing can become root:
+# there is no setuid helper, no sudo, and no file capability. See
+# container/Readme.md for what --cap-add SYS_BOOT is for.
+FROM docker.io/library/alpine:3.22
+
+RUN apk add --no-cache runit
+
+WORKDIR /opt/sv-helper
+COPY install.sh rsvlog.sh runsvdir.sh sv-helper.sh README.md COPYING ./
+COPY etc ./etc
+
+# install-stages also links /etc/runit/stopit and reboot into /run/runit,
+# so runit's control files live somewhere this user can write.
+RUN ./install.sh install --prefix /usr/local \
+    && ./install.sh install-stages
+
+# The user's primary group is 0, and everything it owns is group-writable,
+# so an arbitrary UID started with GID 0 (OpenShift's convention, or
+# `--user 123456:0`) can use the same state without owning it.
+ARG SV_UID=1000
+RUN adduser -D -u "$SV_UID" -G root -h /home/sv -s /bin/sh sv
+
+# HOME is set here, not left to the runtime: an arbitrary UID has no
+# passwd entry, and its HOME would otherwise be /. With it fixed, a regular
+# user's defaults resolve the same for any UID:
+#
+#   ~/.config/sv-helper/sv              service definitions
+#   ~/.local/state/sv-helper/service    the supervised tree (SVDIR)
+#   ~/.local/state/sv-helper/log        logs, through rsvlog
+ENV HOME=/home/sv
+
+COPY container/sv /home/sv/.config/sv-helper/sv
+RUN mkdir -p /home/sv/.local/state/sv-helper/service /run/runit \
+    && ln -s /home/sv/.config/sv-helper/sv/hello \
+        /home/sv/.local/state/sv-helper/service/hello \
+    && ln -s /usr/local/bin/rsvlog /home/sv/.config/sv-helper/sv/hello/log/run \
+    && chown -R "$SV_UID:0" /home/sv /run/runit \
+    && chmod -R g=u /home/sv /run/runit
+
+# Numeric, so a runtime enforcing "run as non-root" can verify it without
+# reading the image's /etc/passwd.
+USER $SV_UID
+
+# runit only accepts INT and CONT, and only in stage 2. INT is the
+# ctrl-alt-del request, which /etc/runit/ctrlaltdel turns into a shutdown.
+# See that file.
+STOPSIGNAL SIGINT
+
+CMD ["/usr/sbin/runit"]

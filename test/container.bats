@@ -12,18 +12,8 @@ CONTAINER_IMAGE=sv-helper-container-test
 CONTAINER_NAME=sv-helper-container-test
 STOP_TIMEOUT=30
 
-container_engine() {
-    local candidate
-    for candidate in podman docker; do
-        if command -v "$candidate" >/dev/null 2>&1; then
-            printf '%s\n' "$candidate"
-            return 0
-        fi
-    done
-    return 1
-}
-
 setup_file() {
+    load 'test_helper/container'
     REPO_ROOT=$(cd "${BATS_TEST_DIRNAME}/.." && pwd -P)
     export REPO_ROOT
 

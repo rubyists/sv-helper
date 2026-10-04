@@ -155,6 +155,7 @@ install_here() {
     local stage="$TEST_TMP/stage"
     "$INSTALL" install --destdir "$stage" --prefix /usr/local
     refute [ -e "$stage/etc/runit/2" ]
+    refute [ -L "$stage/etc/runit/stopit" ]
 }
 
 @test "install-stages puts the runit stages in place as a separate step" {
@@ -169,6 +170,20 @@ install_here() {
     done
 }
 
+@test "install-stages links runit's control files into /run/runit" {
+    # So a container running as a regular user can arm stopit without
+    # /etc/runit being writable. See container/Readme.md.
+    local stage="$TEST_TMP/stage" name
+
+    run "$INSTALL" install-stages --destdir "$stage"
+    assert_success
+
+    for name in stopit reboot
+    do
+        assert_equal "$(readlink "$stage/etc/runit/$name")" "/run/runit/$name"
+    done
+}
+
 @test "uninstall-stages takes them back" {
     local stage="$TEST_TMP/stage"
     "$INSTALL" install-stages --destdir "$stage"
@@ -176,6 +191,7 @@ install_here() {
     run "$INSTALL" uninstall-stages --destdir "$stage"
     assert_success
     refute [ -e "$stage/etc/runit/2" ]
+    refute [ -L "$stage/etc/runit/stopit" ]
 }
 
 @test "the makefile drives the same installer" {
