@@ -17,6 +17,9 @@
 
 set -e
 
+# release-please rewrites this line on every release, through the marker.
+sv_version=4.1.0 # x-release-please-version
+
 commands="sv-list svls sv-find sv-enable sv-disable sv-start sv-stop sv-restart"
 
 sv_uname=$(uname -s)
@@ -307,6 +310,19 @@ make_links() {
 	done
 }
 
+# GNU style: the package alone when called by its own name, and the alias
+# with the package beside it otherwise, so `svls --version` says which
+# package svls belongs to.
+print_version() {
+	name=$1
+	if [ "$name" = sv-helper ] || [ "$name" = sv-helper.sh ]
+	then
+		echo "sv-helper $sv_version"
+	else
+		echo "$name (sv-helper) $sv_version"
+	fi
+}
+
 # Every path this invocation would use, for diagnosing a surprising default.
 paths() {
 	printf 'uname:        %s\n' "$sv_uname"
@@ -329,8 +345,9 @@ usage() {
 	sv-list) echo "sv-list - List available services" ;;
 	make-links) echo "make-links - Deprecated; use ./install.sh" ;;
 	paths) echo "paths - Show the service, definition and log paths this invocation resolves" ;;
+	version) echo "version - Show sv-helper's version (every command also takes --version)" ;;
 	commands)
-		echo "Valid Commands: ${commands} paths make-links"
+		echo "Valid Commands: ${commands} paths version make-links"
 		echo "use command -h for help"
 		;;
 	*) echo "Invalid command (${commands})" ;;
@@ -351,6 +368,14 @@ then
 	else
 		shift
 	fi
+fi
+
+# The version, like help, has to work before any service directory exists,
+# and from every alias: `svls --version` as much as `sv-helper version`.
+if [ "$cmd" = version ] || [ "$cmd" = --version ] || [ "$1" = --version ]
+then
+	print_version "$(basename "$0")"
+	exit 0
 fi
 
 # Help must work before any service directory exists, so it is answered

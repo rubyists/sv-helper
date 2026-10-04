@@ -12,6 +12,22 @@
         {
           "type": "generic",
           "path": "PKGBUILD"
+        },
+        {
+          "type": "generic",
+          "path": "sv-helper.sh"
+        },
+        {
+          "type": "generic",
+          "path": "rsvlog.sh"
+        },
+        {
+          "type": "generic",
+          "path": "runsvdir.sh"
+        },
+        {
+          "type": "generic",
+          "path": "README.md"
         }
       ],
       "changelog-sections": [
