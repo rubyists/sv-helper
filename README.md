@@ -1,5 +1,6 @@
 Helpers for administering [runit](https://smarden.org/runit/) services —
-as root on a runit system, or as a regular user on macOS or Linux.
+as root on a runit system, as a regular user on macOS or Linux, or as
+PID 1 in a container.
 
 [full documentation](https://github.com/rubyists/sv-helper/wiki)
 
@@ -128,6 +129,20 @@ rather than a silent downgrade to root.
 
 An existing `./main` directory is always kept as-is, so an established
 log layout is never moved out from under the logs already in it.
+
+## Containers
+
+`etc/runit/{1,2,3}` are a complete runit lifecycle for a container
+running as root, with `runsvdir.sh` as stage 2 — the same script a
+regular user runs on a host. Installing them is a separate, explicit
+step, because dropping files into `/etc/runit` changes how the machine
+boots:
+
+    ./install.sh install-stages
+
+See [container/Readme.md](container/Readme.md) for a working
+`Containerfile`, how stopping works, and what to expect when a service
+fails.
 
 ## Development
 
