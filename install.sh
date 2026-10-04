@@ -48,7 +48,8 @@ die() {
 }
 
 run() {
-	if [ "$DRY_RUN" -eq 1 ]; then
+	if [ "$DRY_RUN" -eq 1 ]
+	then
 		echo "would: $*"
 		return 0
 	fi
@@ -79,7 +80,8 @@ USAGE
 }
 
 default_prefix() {
-	if [ "$(id -u)" -eq 0 ]; then
+	if [ "$(id -u)" -eq 0 ]
+	then
 		echo /usr/local
 	else
 		echo "$HOME/.local"
@@ -95,8 +97,10 @@ source_dir() {
 # Where the file for installed name $1 lives in the source tree.
 source_for() {
 	name=$1
-	for candidate in "$SRC/bin/$name" "$SRC/$name.sh" "$SRC/$name"; do
-		if [ -f "$candidate" ]; then
+	for candidate in "$SRC/bin/$name" "$SRC/$name.sh" "$SRC/$name"
+	do
+		if [ -f "$candidate" ]
+		then
 			printf '%s\n' "$candidate"
 			return 0
 		fi
@@ -106,8 +110,10 @@ source_for() {
 
 doc_source_for() {
 	name=$1
-	for candidate in "$SRC/share/doc/sv-helper/$name" "$SRC/$name"; do
-		if [ -f "$candidate" ]; then
+	for candidate in "$SRC/share/doc/sv-helper/$name" "$SRC/$name"
+	do
+		if [ -f "$candidate" ]
+		then
 			printf '%s\n' "$candidate"
 			return 0
 		fi
@@ -123,7 +129,8 @@ check_file_conflict() {
 	dest=$2
 	[ -e "$dest" ] || [ -L "$dest" ] || return 0
 	[ "$FORCE" -eq 1 ] && return 0
-	if [ -L "$dest" ]; then
+	if [ -L "$dest" ]
+	then
 		die "$dest is a symlink to $(readlink "$dest"), not a file this installer wrote.
 Remove it, or re-run with --force."
 	fi
@@ -138,7 +145,8 @@ check_link_conflict() {
 	dest=$2
 	[ -e "$dest" ] || [ -L "$dest" ] || return 0
 	[ "$FORCE" -eq 1 ] && return 0
-	if [ -L "$dest" ]; then
+	if [ -L "$dest" ]
+	then
 		[ "$(readlink "$dest")" = "$target" ] && return 0
 		die "$dest is a symlink to $(readlink "$dest"), not to $target.
 Remove it, or re-run with --force."
@@ -186,7 +194,8 @@ remove_file() {
 	src=$1
 	dest=$2
 	[ -e "$dest" ] || [ -L "$dest" ] || return 0
-	if [ "$FORCE" -eq 0 ] && [ -f "$src" ] && [ ! -L "$dest" ] && ! cmp -s "$src" "$dest"; then
+	if [ "$FORCE" -eq 0 ] && [ -f "$src" ] && [ ! -L "$dest" ] && ! cmp -s "$src" "$dest"
+	then
 		warn "skipping $dest: contents differ from what was installed"
 		return 0
 	fi
@@ -201,7 +210,8 @@ remove_link() {
 		[ -e "$dest" ] && warn "skipping $dest: not a symlink"
 		return 0
 	}
-	if [ "$FORCE" -eq 0 ] && [ "$(readlink "$dest")" != "$target" ]; then
+	if [ "$FORCE" -eq 0 ] && [ "$(readlink "$dest")" != "$target" ]
+	then
 		warn "skipping $dest: points at $(readlink "$dest"), not $target"
 		return 0
 	fi
@@ -215,16 +225,19 @@ do_install() {
 	ensure_dir "$DOC"
 	require_writable "$DOC"
 
-	for name in $COMMANDS; do
+	for name in $COMMANDS
+	do
 		src=$(source_for "$name") || die "Could not find $name in $SRC"
 		install_file "$src" "$BIN/$name" 0755
 	done
 
-	for name in $ALIASES; do
+	for name in $ALIASES
+	do
 		install_link sv-helper "$BIN/$name"
 	done
 
-	for name in $DOCS; do
+	for name in $DOCS
+	do
 		src=$(doc_source_for "$name") || continue
 		install_file "$src" "$DOC/$name" 0644
 	done
@@ -238,16 +251,19 @@ do_install() {
 }
 
 do_uninstall() {
-	for name in $ALIASES; do
+	for name in $ALIASES
+	do
 		remove_link sv-helper "$BIN/$name"
 	done
 
-	for name in $COMMANDS; do
+	for name in $COMMANDS
+	do
 		src=$(source_for "$name") || src=
 		remove_file "$src" "$BIN/$name"
 	done
 
-	for name in $DOCS; do
+	for name in $DOCS
+	do
 		src=$(doc_source_for "$name") || src=
 		remove_file "$src" "$DOC/$name"
 	done
@@ -259,8 +275,10 @@ do_uninstall() {
 
 stage_source_for() {
 	stage=$1
-	for candidate in "$SRC/etc/runit/$stage" "$SRC/runit/$stage"; do
-		if [ -f "$candidate" ]; then
+	for candidate in "$SRC/etc/runit/$stage" "$SRC/runit/$stage"
+	do
+		if [ -f "$candidate" ]
+		then
 			printf '%s\n' "$candidate"
 			return 0
 		fi
@@ -271,7 +289,8 @@ stage_source_for() {
 do_install_stages() {
 	ensure_dir "$RUNITDIR"
 	require_writable "$RUNITDIR"
-	for stage in $STAGES; do
+	for stage in $STAGES
+	do
 		src=$(stage_source_for "$stage") || die "Could not find runit stage $stage in $SRC"
 		install_file "$src" "$RUNITDIR/$stage" 0755
 	done
@@ -284,7 +303,8 @@ do_install_stages() {
 }
 
 do_uninstall_stages() {
-	for stage in $STAGES; do
+	for stage in $STAGES
+	do
 		src=$(stage_source_for "$stage") || src=
 		remove_file "$src" "$RUNITDIR/$stage"
 	done
@@ -311,7 +331,8 @@ help | -h | --help)
 *) die "Unknown command '$1'. Try '$PROG help'." ;;
 esac
 
-while [ $# -gt 0 ]; do
+while [ $# -gt 0 ]
+do
 	case "$1" in
 	--prefix)
 		PREFIX=$2

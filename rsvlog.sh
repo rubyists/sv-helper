@@ -29,22 +29,26 @@
 
 set -e
 
-if [ "$(basename "$0")" != "run" ]; then
+if [ "$(basename "$0")" != "run" ]
+then
 	echo "This script meant to be linked as ./run in a service/log directory only!" >&2
 	exit 1
 fi
 curdir=$(basename "$(pwd)")
-if [ "$curdir" != "log" ]; then
+if [ "$curdir" != "log" ]
+then
 	echo "This script meant to be run from a service/log directory only!" >&2
 	exit 1
 fi
 
-if [ -f ./conf ]; then
+if [ -f ./conf ]
+then
 	# shellcheck disable=SC1091  # written by the service, not shipped here
 	. ./conf
 fi
 
-if [ -n "$SV_LOG_SYSLOG" ]; then
+if [ -n "$SV_LOG_SYSLOG" ]
+then
 	prio=${SV_LOG_SYSLOG_PRIORITY:-daemon.info}
 	echo "Logging to Syslog with priority ${prio}"
 	exec logger -p "$prio"
@@ -63,16 +67,20 @@ owner_of() {
 # the standard prefixes as well, because Homebrew's launch agent does not
 # supply an interactive shell's PATH.
 brew_prefix() {
-	if [ -n "$HOMEBREW_PREFIX" ]; then
+	if [ -n "$HOMEBREW_PREFIX" ]
+	then
 		printf '%s\n' "$HOMEBREW_PREFIX"
 		return 0
 	fi
-	if command -v brew >/dev/null 2>&1; then
+	if command -v brew >/dev/null 2>&1
+	then
 		brew --prefix
 		return 0
 	fi
-	for prefix in /opt/homebrew /usr/local /home/linuxbrew/.linuxbrew; do
-		if [ -x "$prefix/bin/brew" ]; then
+	for prefix in /opt/homebrew /usr/local /home/linuxbrew/.linuxbrew
+	do
+		if [ -x "$prefix/bin/brew" ]
+		then
 			printf '%s\n' "$prefix"
 			return 0
 		fi
@@ -88,7 +96,8 @@ brew_prefix() {
 ensure_runit_on_path() {
 	command -v svlogd >/dev/null 2>&1 && return 0
 	prefix=$(brew_prefix) || return 0
-	for dir in "$prefix/opt/runit/bin" "$prefix/bin" "$prefix/sbin"; do
+	for dir in "$prefix/opt/runit/bin" "$prefix/bin" "$prefix/sbin"
+	do
 		case ":$PATH:" in
 		*":$dir:"*) ;;
 		*) [ -d "$dir" ] && PATH="$PATH:$dir" ;;
@@ -98,7 +107,8 @@ ensure_runit_on_path() {
 }
 
 default_log_base() {
-	if [ "$(uname -s)" = Darwin ]; then
+	if [ "$(uname -s)" = Darwin ]
+	then
 		prefix=$(brew_prefix) || {
 			echo "Homebrew not found; sv-helper needs Homebrew's runit on macOS" >&2
 			return 1
@@ -106,7 +116,8 @@ default_log_base() {
 		printf '%s/var/log\n' "$prefix"
 		return 0
 	fi
-	if is_root; then
+	if is_root
+	then
 		printf '/var/log\n'
 		return 0
 	fi
@@ -139,7 +150,8 @@ take_ownership() {
 # it as ourselves. Everything that execs the logger goes through here.
 exec_svlogd() {
 	dir=$1
-	if [ -n "$user_group" ] && is_root; then
+	if [ -n "$user_group" ] && is_root
+	then
 		exec chpst -u "$user_group" svlogd -t "$dir"
 	fi
 	exec svlogd -t "$dir"
@@ -152,13 +164,16 @@ exec_svlogd() {
 # account the operator named explicitly is a different matter - that one is
 # a real configuration error, and silently logging as root instead would be
 # a downgrade nobody asked for.
-if [ -n "$USERGROUP" ]; then
-	if ! id -u "${USERGROUP%%:*}" >/dev/null 2>&1; then
+if [ -n "$USERGROUP" ]
+then
+	if ! id -u "${USERGROUP%%:*}" >/dev/null 2>&1
+	then
 		echo "USERGROUP is $USERGROUP but there is no such user" >&2
 		exit 1
 	fi
 	user_group=$USERGROUP
-elif is_root && id -u rsvlog >/dev/null 2>&1; then
+elif is_root && id -u rsvlog >/dev/null 2>&1
+then
 	user_group=rsvlog:adm
 else
 	user_group=
@@ -168,7 +183,8 @@ ensure_runit_on_path
 
 # An existing ./main wins: it is this service's established log layout, and
 # changing where it writes would strand the logs already there.
-if [ -d ./main ]; then
+if [ -d ./main ]
+then
 	take_ownership ./main
 	link_current
 	link_alias ./main
@@ -187,7 +203,8 @@ esac
 
 # mkdir -p is the test: a base that cannot be created or written is not a
 # base, and the logs stay in the log directory itself rather than vanishing.
-if mkdir -p "$target" 2>/dev/null && [ -w "$target" ]; then
+if mkdir -p "$target" 2>/dev/null && [ -w "$target" ]
+then
 	ln -sfn "$target" ./main
 	link_current
 	link_alias "$target"

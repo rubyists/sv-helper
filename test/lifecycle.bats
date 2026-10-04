@@ -13,8 +13,10 @@ setup_file() {
     REPO_ROOT=$(cd "${BATS_TEST_DIRNAME}/.." && pwd -P)
     export REPO_ROOT
 
-    for tool in runsvdir runsv sv svlogd; do
-        if ! command -v "$tool" >/dev/null 2>&1; then
+    for tool in runsvdir runsv sv svlogd
+    do
+        if ! command -v "$tool" >/dev/null 2>&1
+        then
             export LIFECYCLE_SKIP="runit is not installed ($tool missing)"
             return 0
         fi
@@ -36,7 +38,8 @@ setup_file() {
     ln -s "$REPO_ROOT/sv-helper.sh" "$BIN/sv-helper"
     ln -s "$REPO_ROOT/rsvlog.sh" "$BIN/rsvlog"
     ln -s "$REPO_ROOT/runsvdir.sh" "$BIN/runsvdir.sh"
-    for name in sv-start sv-stop sv-restart sv-list svls sv-enable sv-disable sv-find; do
+    for name in sv-start sv-stop sv-restart sv-list svls sv-enable sv-disable sv-find
+    do
         ln -s sv-helper "$BIN/$name"
     done
 
@@ -44,7 +47,11 @@ setup_file() {
     cat > "$DEFS/run" <<'RUN'
 #!/bin/sh
 exec 2>&1
-while true; do echo "tick"; sleep 1; done
+while true
+do
+	echo "tick"
+	sleep 1
+done
 RUN
     chmod +x "$DEFS/run"
     ln -s "$BIN/rsvlog" "$DEFS/log/run"

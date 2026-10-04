@@ -13,7 +13,8 @@ shell_scripts() {
     # Tracked files only - no submodule contents, no build output, no
     # untracked scratch work sitting in the checkout.
     local file
-    git -C "$REPO_ROOT" ls-files -z | while IFS= read -r -d '' file; do
+    git -C "$REPO_ROOT" ls-files -z | while IFS= read -r -d '' file
+    do
         case "$file" in
             test/bats/*|test/test_helper/bats-*) continue ;;
         esac
@@ -40,15 +41,18 @@ shell_scripts() {
     # forcing one would check the bash test helpers as POSIX sh.
 
     local failures="" file
-    while IFS= read -r file; do
-        if ! output=$(shellcheck "$REPO_ROOT/$file" 2>&1); then
+    while IFS= read -r file
+    do
+        if ! output=$(shellcheck "$REPO_ROOT/$file" 2>&1)
+        then
             failures="$failures
 --- $file ---
 $output"
         fi
     done < <(shell_scripts)
 
-    if [ -n "$failures" ]; then
+    if [ -n "$failures" ]
+    then
         fail "shellcheck reported problems:$failures"
     fi
 }

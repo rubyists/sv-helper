@@ -27,7 +27,8 @@ msg() {
 # explicit SVDIR, then the invoking user's default. A regular user's tree
 # is the same one it would supervise on a host, never a system tree.
 find_svdir() {
-	if [ -n "$SVDIR" ] && [ -d "$SVDIR" ]; then
+	if [ -n "$SVDIR" ] && [ -d "$SVDIR" ]
+	then
 		printf '%s\n' "$SVDIR"
 		return 0
 	fi
@@ -38,8 +39,10 @@ find_svdir() {
 		printf '%s\n' "$dir"
 		return 0
 	fi
-	for dir in /service /var/service /etc/service; do
-		if [ -d "$dir" ]; then
+	for dir in /service /var/service /etc/service
+	do
+		if [ -d "$dir" ]
+		then
 			printf '%s\n' "$dir"
 			return 0
 		fi
@@ -53,12 +56,14 @@ svdir=$(find_svdir) || {
 }
 
 services=""
-for service in "$svdir"/*; do
+for service in "$svdir"/*
+do
 	[ -d "$service" ] || continue
 	services="$services $service"
 done
 
-if [ -z "$services" ]; then
+if [ -z "$services" ]
+then
 	msg "no services in $svdir"
 else
 	msg "stopping services in $svdir (timeout ${timeout}s)"
@@ -70,8 +75,10 @@ else
 	sv -w "$timeout" shutdown $services || msg "some log services did not finish in time"
 fi
 
-for hook in /etc/runit/stage3.d/*.sh; do
-	if [ -r "$hook" ]; then
+for hook in /etc/runit/stage3.d/*.sh
+do
+	if [ -r "$hook" ]
+	then
 		msg "running hook $hook"
 		# shellcheck disable=SC1090  # supplied by the image, not by us
 		. "$hook"

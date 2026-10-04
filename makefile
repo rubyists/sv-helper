@@ -41,10 +41,10 @@ make-links: install
 # see test/README.md. A clone without them fetched gets a pointer to the
 # one command that fixes it rather than "no such file or directory".
 test:
-	@test -x $(BATS) || { \
-		echo "bats is missing. Run: git submodule update --init --recursive" >&2; \
-		exit 1; \
-	}
+	@test -x $(BATS) || ( \
+		echo "bats is missing. Run: git submodule update --init --recursive" >&2 && \
+		false \
+	)
 	$(BATS) test/
 
 .PHONY: all test install uninstall install-stages uninstall-stages make-links

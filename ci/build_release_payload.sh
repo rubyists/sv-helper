@@ -101,7 +101,8 @@ STAGE=$(mktemp -d "${TMPDIR:-/tmp}/sv-helper-payload.XXXXXX")
 trap 'rm -rf "$STAGE"' EXIT INT TERM
 
 echo "Staging $TREE"
-for entry in $FILES; do
+for entry in $FILES
+do
 	src=${entry%%:*}
 	dest=${entry#*:}
 	[ -f "$ROOT/$src" ] || die "missing source file: $src"
@@ -110,12 +111,14 @@ for entry in $FILES; do
 	chmod 0644 "$STAGE/$TREE/$dest"
 done
 
-for exe in $EXECUTABLES; do
+for exe in $EXECUTABLES
+do
 	[ -f "$STAGE/$TREE/$exe" ] || die "executable not staged: $exe"
 	chmod 0755 "$STAGE/$TREE/$exe"
 done
 
-for name in $ALIASES; do
+for name in $ALIASES
+do
 	ln -s sv-helper "$STAGE/$TREE/bin/$name"
 done
 
@@ -124,11 +127,13 @@ done
 # Homebrew's gnu-tar installs it as gtar, so prefer that name when present.
 TAR=tar
 command -v gtar >/dev/null 2>&1 && TAR=gtar
-if ! "$TAR" --version 2>/dev/null | head -1 | grep -q 'GNU tar'; then
+if ! "$TAR" --version 2>/dev/null | head -1 | grep -q 'GNU tar'
+then
 	die "GNU tar is required to build reproducible archives (brew install gnu-tar on macOS)"
 fi
 
-for platform in $PLATFORMS; do
+for platform in $PLATFORMS
+do
 	archive="$OUTDIR/$NAME-$platform.tar.gz"
 	echo "Building $(basename "$archive")"
 	"$TAR" --sort=name \
@@ -139,7 +144,8 @@ for platform in $PLATFORMS; do
 		gzip -9 -n >"$archive"
 done
 
-for entry in $SCRIPTS; do
+for entry in $SCRIPTS
+do
 	src=${entry%%:*}
 	asset=${entry#*:}
 	cp "$ROOT/$src" "$OUTDIR/$asset"
@@ -153,9 +159,11 @@ done
 (
 	cd "$OUTDIR"
 	rm -f SHA256SUMS
-	for file in *; do
+	for file in *
+	do
 		[ -f "$file" ] || continue
-		if command -v sha256sum >/dev/null 2>&1; then
+		if command -v sha256sum >/dev/null 2>&1
+		then
 			sha256sum "$file"
 		else
 			shasum -a 256 "$file"

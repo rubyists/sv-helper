@@ -50,16 +50,20 @@ sv_readlink() {
 # Homebrew's launch agent gives a minimal PATH, so fall back to probing the
 # standard prefixes rather than requiring an interactive shell environment.
 sv_brew_prefix() {
-	if [ -n "$HOMEBREW_PREFIX" ]; then
+	if [ -n "$HOMEBREW_PREFIX" ]
+	then
 		printf '%s\n' "$HOMEBREW_PREFIX"
 		return 0
 	fi
-	if command -v brew >/dev/null 2>&1; then
+	if command -v brew >/dev/null 2>&1
+	then
 		brew --prefix
 		return 0
 	fi
-	for prefix in /opt/homebrew /usr/local /home/linuxbrew/.linuxbrew; do
-		if [ -x "$prefix/bin/brew" ]; then
+	for prefix in /opt/homebrew /usr/local /home/linuxbrew/.linuxbrew
+	do
+		if [ -x "$prefix/bin/brew" ]
+		then
 			printf '%s\n' "$prefix"
 			return 0
 		fi
@@ -80,7 +84,8 @@ sv_require_brew_prefix() {
 sv_ensure_runit_on_path() {
 	command -v sv >/dev/null 2>&1 && return 0
 	prefix=$(sv_brew_prefix) || return 0
-	for dir in "$prefix/opt/runit/bin" "$prefix/bin" "$prefix/sbin"; do
+	for dir in "$prefix/opt/runit/bin" "$prefix/bin" "$prefix/sbin"
+	do
 		case ":$PATH:" in
 		*":$dir:"*) ;;
 		*) [ -d "$dir" ] && PATH="$PATH:$dir" ;;
@@ -104,21 +109,26 @@ sv_is_root() {
 # The enabled service tree. A non-root invocation never selects a system
 # tree, however writable that tree happens to be.
 svdir() {
-	if [ -n "$SVDIR" ]; then
+	if [ -n "$SVDIR" ]
+	then
 		[ -d "$SVDIR" ] || die 127 "No service directory found at \$SVDIR ($SVDIR)"
 		printf '%s\n' "$SVDIR"
 		return 0
 	fi
 
-	if [ "$sv_uname" = Darwin ]; then
+	if [ "$sv_uname" = Darwin ]
+	then
 		prefix=$(sv_require_brew_prefix) || exit $?
 		printf '%s/var/service\n' "$prefix"
 		return 0
 	fi
 
-	if sv_is_root; then
-		for dir in /var/service /service /etc/service; do
-			if [ -d "$dir" ]; then
+	if sv_is_root
+	then
+		for dir in /var/service /service /etc/service
+		do
+			if [ -d "$dir" ]
+			then
 				printf '%s\n' "$dir"
 				return 0
 			fi
@@ -132,18 +142,21 @@ svdir() {
 # Where service definitions are looked for, most specific first. Printed one
 # per line so paths containing spaces survive.
 sv_source_dirs() {
-	if [ -n "$SV_SOURCE_DIR" ]; then
+	if [ -n "$SV_SOURCE_DIR" ]
+	then
 		printf '%s\n' "$SV_SOURCE_DIR" | tr ':' '\n'
 		return 0
 	fi
 
 	ln_dir=$(svdir) || exit $?
 
-	if [ "$sv_uname" = Darwin ]; then
+	if [ "$sv_uname" = Darwin ]
+	then
 		prefix=$(sv_require_brew_prefix) || exit $?
 		printf '%s/etc/sv\n' "$prefix"
 		printf '%s/var/sv\n' "$prefix"
-	elif sv_is_root; then
+	elif sv_is_root
+	then
 		printf '/etc/sv\n'
 	else
 		printf '%s/sv-helper/sv\n' "$(sv_config_home)"
@@ -161,18 +174,23 @@ find_service() {
 	[ -n "$service" ] || return 0
 
 	ln_dir=$(svdir) || exit $?
-	if [ -L "$ln_dir/$service" ]; then
-		if location=$(sv_readlink "$ln_dir/$service"); then
+	if [ -L "$ln_dir/$service" ]
+	then
+		if location=$(sv_readlink "$ln_dir/$service")
+		then
 			printf '%s\n' "$location"
 			return 0
 		fi
-	elif [ -d "$ln_dir/$service" ]; then
+	elif [ -d "$ln_dir/$service" ]
+	then
 		printf '%s\n' "$ln_dir/$service"
 		return 0
 	fi
 
-	sv_source_dirs | while IFS= read -r dir; do
-		if [ -d "$dir/$service" ]; then
+	sv_source_dirs | while IFS= read -r dir
+	do
+		if [ -d "$dir/$service" ]
+		then
 			printf '%s\n' "$dir/$service"
 			break
 		fi
@@ -204,13 +222,15 @@ enable_service() {
 	warn "Enabling $service"
 
 	source_dir=$(find_service "$service")
-	if [ -z "$source_dir" ] || [ ! -d "$source_dir" ]; then
+	if [ -z "$source_dir" ] || [ ! -d "$source_dir" ]
+	then
 		die 1 "No such service '$service'"
 	fi
 
 	ln_dir=$(svdir) || exit $?
 	ensure_svdir "$ln_dir"
-	if [ -L "$ln_dir/$service" ] || [ -d "$ln_dir/$service" ]; then
+	if [ -L "$ln_dir/$service" ] || [ -d "$ln_dir/$service" ]
+	then
 		warn "Service already enabled!"
 		warn "  $(sv s "$ln_dir/$service" 2>&1)"
 		exit 1
@@ -235,14 +255,16 @@ disable_service() {
 # Status of one service, or of every enabled service.
 list() {
 	ln_dir=$(svdir) || exit $?
-	if [ -n "$1" ]; then
+	if [ -n "$1" ]
+	then
 		sv s "$ln_dir/$1"
 		return 0
 	fi
 
 	echo "Listing All Services"
 	found=0
-	for entry in "$ln_dir"/*; do
+	for entry in "$ln_dir"/*
+	do
 		[ -e "$entry" ] || continue
 		found=1
 		sv s "$entry" || true
@@ -252,9 +274,11 @@ list() {
 
 # Names of every available service definition, deduplicated across sources.
 available() {
-	sv_source_dirs | while IFS= read -r dir; do
+	sv_source_dirs | while IFS= read -r dir
+	do
 		[ -d "$dir" ] || continue
-		for entry in "$dir"/*; do
+		for entry in "$dir"/*
+		do
 			[ -d "$entry" ] || continue
 			basename "$entry"
 		done
@@ -277,7 +301,8 @@ make_links() {
 	me=$0
 	here=$(cd "$(dirname "$me")" && pwd)
 	warn "make-links is deprecated; use ./install.sh instead"
-	for link in $commands; do
+	for link in $commands
+	do
 		[ -L "$here/$link" ] || ln -s "$(basename "$me")" "$here/$link"
 	done
 }
@@ -317,9 +342,11 @@ usage() {
 sv_ensure_runit_on_path
 
 cmd=$(basename "$0")
-if [ "$cmd" = "sv-helper" ] || [ "$cmd" = "sv-helper.sh" ]; then
+if [ "$cmd" = "sv-helper" ] || [ "$cmd" = "sv-helper.sh" ]
+then
 	cmd=$1
-	if [ -z "$cmd" ]; then
+	if [ -z "$cmd" ]
+	then
 		cmd=commands
 	else
 		shift
@@ -328,7 +355,8 @@ fi
 
 # Help must work before any service directory exists, so it is answered
 # before anything resolves a path.
-while getopts h options; do
+while getopts h options
+do
 	case $options in
 	h)
 		usage "$cmd"

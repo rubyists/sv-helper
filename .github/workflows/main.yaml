@@ -111,7 +111,8 @@ jobs:
           RELEASE_TAG: ${{ needs.release-please.outputs.tag }}
         run: |
           set -euo pipefail
-          if [ "${{ github.event_name }}" != workflow_dispatch ]; then
+          if [ "${{ github.event_name }}" != workflow_dispatch ]
+          then
               # The push being handled is the release pull request's own
               # merge commit, which is exactly what was released.
               tag=$RELEASE_TAG
@@ -126,9 +127,11 @@ jobs:
               # (force-tag-creation; GitHub alone would only tag it on
               # publication), so the tag is normally there. Try it, then
               # the release's own target, then give up and ask.
-              if [ -n "$DISPATCH_COMMIT" ]; then
+              if [ -n "$DISPATCH_COMMIT" ]
+              then
                   commit=$DISPATCH_COMMIT
-              elif commit=$(git rev-list -n1 "$tag" 2>/dev/null); then
+              elif commit=$(git rev-list -n1 "$tag" 2>/dev/null)
+              then
                   :
               else
                   commit=$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" \

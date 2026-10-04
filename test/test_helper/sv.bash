@@ -14,7 +14,8 @@ as_user() {
 }
 
 brew_prefix() {
-	if [ -n "${HOMEBREW_PREFIX:-}" ]; then
+	if [ -n "${HOMEBREW_PREFIX:-}" ]
+	then
 		printf '%s\n' "$HOMEBREW_PREFIX"
 		return 0
 	fi
@@ -25,7 +26,8 @@ brew_prefix() {
 # all sit under Homebrew's prefix instead of in XDG directories. Tests
 # assert the real defaults for the platform they run on.
 expected_svdir() {
-	if [ "$(uname -s)" = Darwin ]; then
+	if [ "$(uname -s)" = Darwin ]
+	then
 		printf '%s/var/service\n' "$(brew_prefix)"
 	else
 		printf '%s/.local/state/sv-helper/service\n' "$1"
@@ -33,7 +35,8 @@ expected_svdir() {
 }
 
 expected_defs_dir() {
-	if [ "$(uname -s)" = Darwin ]; then
+	if [ "$(uname -s)" = Darwin ]
+	then
 		printf '%s/etc/sv\n' "$(brew_prefix)"
 	else
 		printf '%s/.config/sv-helper/sv\n' "$1"
@@ -41,7 +44,8 @@ expected_defs_dir() {
 }
 
 expected_log_dir() {
-	if [ "$(uname -s)" = Darwin ]; then
+	if [ "$(uname -s)" = Darwin ]
+	then
 		printf '%s/var/log\n' "$(brew_prefix)"
 	else
 		printf '%s/.local/state/sv-helper/log\n' "$1"
@@ -60,8 +64,10 @@ service_pid() {
 # Skip the calling test unless every named command exists.
 require_commands() {
 	local tool
-	for tool in "$@"; do
-		if ! command -v "$tool" >/dev/null 2>&1; then
+	for tool in "$@"
+	do
+		if ! command -v "$tool" >/dev/null 2>&1
+		then
 			skip "$tool is not installed"
 		fi
 	done
@@ -87,12 +93,14 @@ stop_supervision_tree() {
 
 	sv_shutdown_each "$svdir"
 
-	for pid in $(supervisor_pids "$svdir"); do
+	for pid in $(supervisor_pids "$svdir")
+	do
 		# HUP, not TERM: it passes TERM on to any runsv still standing
 		# before exiting, rather than abandoning it.
 		kill -HUP "$pid" 2>/dev/null || true
 		waited=0
-		while kill -0 "$pid" 2>/dev/null && [ "$waited" -lt 10 ]; do
+		while kill -0 "$pid" 2>/dev/null && [ "$waited" -lt 10 ]
+		do
 			sleep 1
 			waited=$((waited + 1))
 		done
@@ -110,7 +118,8 @@ stop_supervision_tree() {
 # easily exceeds.
 supervisor_pids() {
 	local svdir="$1" pid args
-	ps -ww -eo pid=,args= | while read -r pid args; do
+	ps -ww -eo pid=,args= | while read -r pid args
+	do
 		case "$args" in
 		"runsvdir -P $svdir"*) printf '%s\n' "$pid" ;;
 		esac
@@ -119,7 +128,8 @@ supervisor_pids() {
 
 sv_shutdown_each() {
 	local service
-	for service in "$1"/*; do
+	for service in "$1"/*
+	do
 		[ -e "$service" ] || continue
 		sv -w 5 force-stop "$service" >/dev/null 2>&1 || true
 		sv -w 5 shutdown "$service" >/dev/null 2>&1 || true

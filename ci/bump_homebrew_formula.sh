@@ -18,7 +18,8 @@ FORMULA=$1
 TAG=$2
 SUMS=$3
 
-if [ -z "$FORMULA" ] || [ -z "$TAG" ] || [ -z "$SUMS" ]; then
+if [ -z "$FORMULA" ] || [ -z "$TAG" ] || [ -z "$SUMS" ]
+then
 	echo "Usage: $0 FORMULA_PATH TAG SHA256SUMS_PATH" >&2
 	exit 2
 fi
@@ -43,14 +44,19 @@ VERSION=${TAG#v}
 VERSION_FILE="$(dirname "$FORMULA")/.version"
 
 digest_of() {
-	awk -v want="$1" '$2 == want { print $1; found = 1 } END { exit !found }' "$SUMS"
+	awk -v want="$1" '$2 == want {
+		print $1
+		found = 1
+	}
+	END { exit !found }' "$SUMS"
 }
 
 WORK=$(mktemp -d "${TMPDIR:-/tmp}/sv-helper-bump.XXXXXX")
 trap 'rm -rf "$WORK"' EXIT INT TERM
 cp "$FORMULA" "$WORK/formula.rb"
 
-for asset in sv-helper-linux.tar.gz sv-helper-darwin.tar.gz; do
+for asset in sv-helper-linux.tar.gz sv-helper-darwin.tar.gz
+do
 	sha=$(digest_of "$asset") || die "no checksum for $asset in $SUMS"
 
 	# A sha256 is always exactly 64 hex characters. Matching that
@@ -76,7 +82,8 @@ for asset in sv-helper-linux.tar.gz sv-helper-darwin.tar.gz; do
 	mv "$WORK/next.rb" "$WORK/formula.rb"
 
 	if [ "$before" = "$(cat "$WORK/formula.rb")" ] &&
-		! grep -Fq "\"$sha\"" "$WORK/formula.rb"; then
+		! grep -Fq "\"$sha\"" "$WORK/formula.rb"
+	then
 		die "could not find a url/sha256 pair for $asset in $FORMULA"
 	fi
 done
