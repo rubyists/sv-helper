@@ -1,15 +1,31 @@
 NAME = sv-helper
-SHELL = /bin/bash
-INSTALL = /usr/bin/install
-MSGFMT = /usr/bin/msgfmt
-SED = /bin/sed
-DESTDIR = /usr/local
-BINDIR = /bin
-DOCDIR = /share/doc/$(NAME)
+SHELL = /bin/sh
 
+# PREFIX is where the files live when they run; DESTDIR is a staging root
+# used only while installing. Earlier versions of this makefile used
+# DESTDIR for both, so a package build and a real install could not be
+# told apart - pass PREFIX for what used to be DESTDIR.
+PREFIX = /usr/local
+DESTDIR =
+BINDIR = $(PREFIX)/bin
+DOCDIR = $(PREFIX)/share/doc/$(NAME)
 BATS = test/bats/bin/bats
 
+INSTALL_FLAGS = --prefix '$(PREFIX)' --bindir '$(BINDIR)' --docdir '$(DOCDIR)' --destdir '$(DESTDIR)'
+
 all:
+
+# One installation path, shared with release archives and package builds,
+# so there is only ever one definition of what "installed" means.
+install: all
+	./install.sh install $(INSTALL_FLAGS)
+
+uninstall:
+	./install.sh uninstall $(INSTALL_FLAGS)
+
+# The command links `sv-helper make-links` used to create. Here for the
+# muscle memory; `install` creates them too.
+make-links: install
 
 # The suite lives in test/ and runs under the vendored bats submodules;
 # see test/README.md. A clone without them fetched gets a pointer to the
@@ -21,26 +37,4 @@ test:
 	}
 	$(BATS) test/
 
-install: all
-	$(INSTALL) -d -m 0755 $(DESTDIR)$(BINDIR)
-	$(INSTALL) -d -m 0755 $(DESTDIR)$(DOCDIR)
-	$(INSTALL) -m 0755 rsvlog.sh $(DESTDIR)$(BINDIR)/rsvlog
-	$(INSTALL) -m 0755 runsvdir.sh $(DESTDIR)$(BINDIR)/runsvdir.sh
-	$(INSTALL) -m 0755 sv-helper.sh $(DESTDIR)$(BINDIR)/sv-helper
-	$(INSTALL) -m 0644 README.md $(DESTDIR)$(DOCDIR)/README.md
-	$(INSTALL) -m 0644 COPYING $(DESTDIR)$(DOCDIR)/COPYING
-	cd $(DESTDIR)$(BINDIR); \
-	for sv in sv-start sv-stop sv-restart sv-list svls sv-enable sv-disable sv-find; do \
-		ln -s sv-helper "$$sv"; \
-	done
-
-uninstall:
-	rm -vf $(DESTDIR)$(BINDIR)/sv-helper
-	rm -vf $(DESTDIR)$(BINDIR)/rsvlog
-	rm -vf $(DESTDIR)$(BINDIR)/runsvdir.sh
-	for sv in sv-start sv-stop sv-restart sv-list svls sv-enable sv-disable sv-find; do \
-		rm -vf $(DESTDIR)$(BINDIR)/"$$sv"; \
-	done
-	rm -vr $(DESTDIR)$(DOCDIR)
-
-.PHONY: all test install uninstall
+.PHONY: all test install uninstall make-links
