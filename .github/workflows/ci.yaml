@@ -8,6 +8,12 @@ on:  # yamllint disable-line rule:truthy
 permissions:
   contents: read
 
+env:
+  # Pinned rather than "latest": a release is signed with whatever this
+  # installs, and a surprise upgrade mid-release is not a surprise anyone
+  # wants. Bump it deliberately.
+  PACKSLIP_VERSION: "1.5.1"
+
 jobs:
   test:
     name: Tests (${{ matrix.os }})
@@ -45,6 +51,19 @@ jobs:
         name: Install runit, shellcheck, gnu-tar and coreutils
         if: runner.os == 'macOS'
         run: brew install runit shellcheck gnu-tar coreutils
+      -
+        # Only on Linux: the packslip suite skips itself when packslip is
+        # absent, and one platform is enough to check a manifest.
+        name: Install packslip
+        if: runner.os == 'Linux'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "v${PACKSLIP_VERSION}" --repo jdx/packslip \
+              --pattern "packslip-v${PACKSLIP_VERSION}-linux-x64" \
+              --output /usr/local/bin/packslip
+          sudo chmod +x /usr/local/bin/packslip
+          packslip --version
       -
         # Docker is present on the Linux runners, so the container suite
         # runs there and skips itself on macOS.
