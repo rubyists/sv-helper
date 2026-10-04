@@ -13,9 +13,12 @@
 # leaves a draft that can simply be re-run.
 #
 # Credentials:
-#   RELEASE_PLEASE_TOKEN  an org secret. A release created with the
-#                         built-in GITHUB_TOKEN starts no further
-#                         workflows, which would stall the pipeline.
+#   RELEASE_PLEASE_TOKEN  an org secret. Needed because the built-in
+#                         GITHUB_TOKEN is scoped to this repository and
+#                         cannot open a pull request against
+#                         rubyists/homebrew-tap, and because a release
+#                         created with the built-in token starts no
+#                         further workflows.
 #   GITHUB_TOKEN          everything else, with per-job permissions below.
 name: main
 
@@ -269,6 +272,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    outputs:
+      prerelease: ${{ steps.kind.outputs.prerelease }}
     steps:
       -
         uses: actions/checkout@v7
@@ -295,3 +300,73 @@ jobs:
           ci/verify_release.sh "${{ needs.target.outputs.tag }}" \
               --repo "$GITHUB_REPOSITORY" \
               --identity-prefix "https://github.com/$GITHUB_REPOSITORY/.github/workflows/main.yaml@"
+      -
+        # Read from the release rather than from release-please, which
+        # does not run at all on the recovery path.
+        name: Is this a prerelease?
+        id: kind
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          prerelease=$(gh release view "${{ needs.target.outputs.tag }}" \
+              --repo "$GITHUB_REPOSITORY" --json isPrerelease --jq '.isPrerelease')
+          printf 'prerelease=%s\n' "$prerelease" >> "$GITHUB_OUTPUT"
+
+  homebrew-tap-bump:
+    name: Bump the Homebrew tap formula
+    needs: [target, verify]
+    # Only a verified, stable release. A prerelease is not what `brew
+    # install sv-helper` should start handing out.
+    if: needs.verify.outputs.prerelease != 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      -
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.target.outputs.commit }}
+          path: sv-helper
+      -
+        # RELEASE_PLEASE_TOKEN: the built-in token is scoped to this
+        # repository and cannot push to or open a pull request against
+        # another one.
+        name: Checkout rubyists/homebrew-tap
+        uses: actions/checkout@v7
+        with:
+          repository: rubyists/homebrew-tap
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          path: homebrew-tap
+      -
+        name: Download this release's SHA256SUMS
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "${{ needs.target.outputs.tag }}" \
+              --repo "$GITHUB_REPOSITORY" --pattern SHA256SUMS \
+              --output sv-helper/SHA256SUMS --clobber
+      -
+        name: Write the new version and digests into the formula
+        run: |
+          sv-helper/ci/bump_homebrew_formula.sh \
+              homebrew-tap/Formula/sv-helper/sv-helper.rb \
+              "${{ needs.target.outputs.tag }}" \
+              sv-helper/SHA256SUMS
+      -
+        # Opens nothing when nothing changed, so re-running this for a
+        # release that was already proposed produces no second pull
+        # request. The branch name is per release for the same reason:
+        # a repeat updates that branch instead of opening another.
+        name: Open a pull request, if anything changed
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          path: homebrew-tap
+          commit-message: "fix: bump sv-helper formula to ${{ needs.target.outputs.tag }}"
+          title: "fix: bump sv-helper formula to ${{ needs.target.outputs.tag }}"
+          body: >-
+            Auto-generated after rubyists/sv-helper's
+            ${{ needs.target.outputs.tag }} release was published and verified.
+          branch: "bump-sv-helper-${{ needs.target.outputs.tag }}"
+          delete-branch: true
