@@ -151,6 +151,33 @@ install_here() {
     refute [ -e /usr/local/bin/sv-helper ]
 }
 
+@test "install does not install the container stages" {
+    local stage="$TEST_TMP/stage"
+    "$INSTALL" install --destdir "$stage" --prefix /usr/local
+    refute [ -e "$stage/etc/runit/2" ]
+}
+
+@test "install-stages puts the runit stages in place as a separate step" {
+    local stage="$TEST_TMP/stage"
+
+    run "$INSTALL" install-stages --destdir "$stage"
+    assert_success
+
+    for name in 1 2 3 ctrlaltdel; do
+        assert [ -f "$stage/etc/runit/$name" ]
+        assert [ -x "$stage/etc/runit/$name" ]
+    done
+}
+
+@test "uninstall-stages takes them back" {
+    local stage="$TEST_TMP/stage"
+    "$INSTALL" install-stages --destdir "$stage"
+
+    run "$INSTALL" uninstall-stages --destdir "$stage"
+    assert_success
+    refute [ -e "$stage/etc/runit/2" ]
+}
+
 @test "the makefile drives the same installer" {
     local stage="$TEST_TMP/mk"
 
