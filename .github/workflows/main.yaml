@@ -38,9 +38,8 @@ on:  # yamllint disable-line rule:truthy
         type: string
       commit:
         description: >-
-          The commit to rebuild from. Only needed for a release that is
-          still a draft and whose target cannot be read back, since a
-          draft release has no git tag yet.
+          The commit to rebuild from. Only needed if neither the release's
+          tag nor its target can be read back.
         required: false
         type: string
 
@@ -123,10 +122,10 @@ jobs:
               # has got to since: a recovery run has to produce the same
               # bytes the release already contains.
               #
-              # A draft release has no git tag - GitHub only creates the
-              # tag when the release is published - and an interrupted
-              # run is exactly the case this path exists for. So try the
-              # tag, then the release's own target, then give up and ask.
+              # release-please tags the draft as it creates it
+              # (force-tag-creation; GitHub alone would only tag it on
+              # publication), so the tag is normally there. Try it, then
+              # the release's own target, then give up and ask.
               if [ -n "$DISPATCH_COMMIT" ]; then
                   commit=$DISPATCH_COMMIT
               elif commit=$(git rev-list -n1 "$tag" 2>/dev/null); then
