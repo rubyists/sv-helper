@@ -7,7 +7,19 @@ DESTDIR = /usr/local
 BINDIR = /bin
 DOCDIR = /share/doc/$(NAME)
 
+BATS = test/bats/bin/bats
+
 all:
+
+# The suite lives in test/ and runs under the vendored bats submodules;
+# see test/README.md. A clone without them fetched gets a pointer to the
+# one command that fixes it rather than "no such file or directory".
+test:
+	@test -x $(BATS) || { \
+		echo "bats is missing. Run: git submodule update --init --recursive" >&2; \
+		exit 1; \
+	}
+	$(BATS) test/
 
 install: all
 	$(INSTALL) -d -m 0755 $(DESTDIR)$(BINDIR)
@@ -30,3 +42,5 @@ uninstall:
 		rm -vf $(DESTDIR)$(BINDIR)/"$$sv"; \
 	done
 	rm -vr $(DESTDIR)$(DOCDIR)
+
+.PHONY: all test install uninstall
