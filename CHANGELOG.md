@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.1.0](https://github.com/rubyists/sv-helper/compare/v4.0.1...v4.1.0) (2026-10-04)
+
+
+### Features
+
+* Run the container lifecycle as a regular user ([#31](https://github.com/rubyists/sv-helper/issues/31)) ([32d0dcd](https://github.com/rubyists/sv-helper/commit/32d0dcddd3e5d93b1243e09de47c71ce9e5ce257)), closes [#17](https://github.com/rubyists/sv-helper/issues/17)
+
 ## [4.0.1](https://github.com/rubyists/sv-helper/compare/v4.0.0...v4.0.1) (2026-10-04)
 
 
