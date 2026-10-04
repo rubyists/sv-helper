@@ -1,6 +1,6 @@
 # Maintainer: TJ Vanderpoel <tj@rubyists.com>
 pkgname=sv-helper
-pkgver=4.0.0 # x-release-please-version
+pkgver=4.0.1 # x-release-please-version
 pkgrel=1
 pkgdesc="Helpers to make runit services easier to administer, as root or as a regular user"
 arch=(any)
