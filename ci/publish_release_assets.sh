@@ -37,10 +37,10 @@ while [ $# -gt 0 ]; do
 	esac
 done
 
-[ -n "$TAG" ] && [ -n "$DIR" ] || {
+if [ -z "$TAG" ] || [ -z "$DIR" ]; then
 	echo "Usage: $0 TAG DIR [--repo OWNER/REPO]" >&2
 	exit 2
-}
+fi
 [ -d "$DIR" ] || {
 	echo "$0: $DIR is not a directory" >&2
 	exit 1

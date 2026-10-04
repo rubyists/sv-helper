@@ -40,9 +40,11 @@ jobs:
         # The real thing the macOS support is written against: sv is
         # patched by this formula to default to $(brew --prefix)/var/service,
         # and `brew services start runit` is the supported supervisor.
-        name: Install runit and shellcheck
+        # gnu-tar (as gtar) builds the reproducible release payload, and
+        # coreutils supplies the GNU tools the scripts expect.
+        name: Install runit, shellcheck, gnu-tar and coreutils
         if: runner.os == 'macOS'
-        run: brew install runit shellcheck
+        run: brew install runit shellcheck gnu-tar coreutils
       -
         # Docker is present on the Linux runners, so the container suite
         # runs there and skips itself on macOS.
