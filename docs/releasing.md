@@ -13,7 +13,8 @@ from Conventional Commits on `main`. There is nothing to run by hand.
    - creates the tag and a **draft** release;
    - builds the payload with `ci/build_release_payload.sh`;
    - attaches it with `ci/publish_release_assets.sh`;
-   - **publishes** the release;
+   - signs it with packslip, in a job that cannot write to the release;
+   - attaches the signed bundle and **publishes** the release;
    - verifies the published release as a stranger would.
 
 The release stays a draft until everything is attached, on purpose.
@@ -31,9 +32,13 @@ end up locked half empty, permanently.
 | `sv-helper.sh` | just the helper |
 | `runsvdir.sh` | just the supervisor starter |
 | `SHA256SUMS` | every asset above |
+| `packslip.sigstore.json` | the signed release statement |
 
-The archives carry no version in their names. The version is in the tag,
-the download URL, and the directory inside the archive.
+The archives carry no version in their names. packslip needs an exact
+path rather than a glob, and that is what lets `release.toml` be a static
+checked-in file instead of something generated per release. The version
+is still in the tag, the download URL, the directory inside the archive,
+and the signed statement.
 
 Both archives have identical contents. They exist separately so each one
 records the platform it is supported on, rather than one artifact
@@ -56,8 +61,21 @@ What CI does, and what anyone else can do:
     ci/verify_release.sh v3.6.0
 
 That downloads every asset, checks them against the release's own
-`SHA256SUMS`, confirms nothing expected is missing, and unpacks the
-archive to check the commands and their permissions survived.
+`SHA256SUMS`, confirms nothing expected is missing, unpacks the archive
+and checks the commands and their permissions survived, and — if
+packslip is installed — verifies the bundle against this repository's
+signing identity.
+
+By hand, against the signature alone:
+
+    packslip verify packslip.sigstore.json \
+      --identity-prefix 'https://github.com/rubyists/sv-helper/.github/workflows/main.yaml@' \
+      --issuer https://token.actions.githubusercontent.com \
+      --artifact sv-helper-linux.tar.gz
+
+Every release is signed from that one workflow file. A consumer treats a
+release signed from a different one as a new signer and refuses it until
+a person approves, so any backfill has to run from `main.yaml` too.
 
 ## When a release run fails partway
 
@@ -85,6 +103,11 @@ recovery path is useful only before publication.
 | --- | --- |
 | `RELEASE_PLEASE_TOKEN` | An org secret. A release created with the built-in `GITHUB_TOKEN` starts no further workflows, which would stall the pipeline. |
 | `GITHUB_TOKEN` | Everything else, with permissions granted per job. |
+
+Job permissions are deliberately uneven. The signing job has
+`id-token: write` and `attestations: write` but only `contents: read`: it
+signs whatever bytes it is handed and must not be able to change the
+release it is describing.
 
 ## Other packaging
 
