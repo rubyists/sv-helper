@@ -3,6 +3,27 @@ as root on a runit system, or as a regular user on macOS or Linux.
 
 [full documentation](https://github.com/rubyists/sv-helper/wiki)
 
+## Install
+
+From a checkout, or from an unpacked release archive:
+
+    ./install.sh                    # ~/.local by default, /usr/local as root
+    ./install.sh --prefix /opt/sv
+    ./install.sh uninstall
+
+It installs `sv-helper`, `rsvlog` and `runsvdir.sh`, plus the command
+links below. Running it again over an identical tree is fine; a file it
+did not write is reported rather than replaced, and `uninstall` takes
+back only its own and leaves everything else alone.
+
+`PREFIX` is where the files will live when they run. `DESTDIR` is a
+staging root used only at install time, for package builds:
+
+    ./install.sh --destdir "$pkgdir" --prefix /usr
+
+`make install` and `make uninstall` drive the same installer, so there is
+only one definition of what "installed" means.
+
 ## Commands
 
     sv-enable <service>    Enable a service, so the supervisor starts it
