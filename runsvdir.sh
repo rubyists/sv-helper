@@ -25,6 +25,17 @@
 # with $SV_PREFIX, and falls back to "generic".
 
 set -e
+
+# release-please rewrites this line on every release, through the marker.
+sv_version=4.1.0 # x-release-please-version
+
+# Before anything resolves, creates or supervises a tree.
+if [ "$1" = --version ]
+then
+	echo "runsvdir.sh (sv-helper) $sv_version"
+	exit 0
+fi
+
 exec 2>&1
 
 warn() {

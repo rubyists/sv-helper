@@ -62,10 +62,21 @@ only one definition of what "installed" means.
     sv-stop <service>      Stop a running one
     sv-restart <service>   Restart it
     sv-helper paths        Every path this invocation would use
+    sv-helper version      sv-helper's version
 
 All of them are the same script, `sv-helper.sh`, dispatching on the name
 it was called by. `sv-helper paths` is the one to reach for when a
 service turns up somewhere unexpected.
+
+Every command, `rsvlog` and `runsvdir.sh` included, also takes
+`--version`:
+
+<!-- x-release-please-start-version -->
+
+    $ svls --version
+    svls (sv-helper) 4.1.0
+
+<!-- x-release-please-end -->
 
 ## Where things go
 
