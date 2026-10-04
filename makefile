@@ -9,6 +9,8 @@ PREFIX = /usr/local
 DESTDIR =
 BINDIR = $(PREFIX)/bin
 DOCDIR = $(PREFIX)/share/doc/$(NAME)
+RUNIT_DIR = /etc/runit
+
 BATS = test/bats/bin/bats
 
 INSTALL_FLAGS = --prefix '$(PREFIX)' --bindir '$(BINDIR)' --docdir '$(DOCDIR)' --destdir '$(DESTDIR)'
@@ -22,6 +24,14 @@ install: all
 
 uninstall:
 	./install.sh uninstall $(INSTALL_FLAGS)
+
+# Container stages are deliberately not part of `make install`: dropping
+# files in /etc/runit changes how the host boots.
+install-stages:
+	./install.sh install-stages --destdir '$(DESTDIR)' --runit-dir '$(RUNIT_DIR)'
+
+uninstall-stages:
+	./install.sh uninstall-stages --destdir '$(DESTDIR)' --runit-dir '$(RUNIT_DIR)'
 
 # The command links `sv-helper make-links` used to create. Here for the
 # muscle memory; `install` creates them too.
@@ -37,4 +47,4 @@ test:
 	}
 	$(BATS) test/
 
-.PHONY: all test install uninstall make-links
+.PHONY: all test install uninstall install-stages uninstall-stages make-links
