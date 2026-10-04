@@ -14,6 +14,13 @@ setup_file() {
     export UNPACKED="${BATS_FILE_TMPDIR}/unpacked"
     export TREE="$UNPACKED/sv-helper-0.0.0-test"
 
+    # Releases are built on Linux; reproducible archives need GNU tar,
+    # which macOS does not ship.
+    if ! tar --version 2>/dev/null | head -1 | grep -q 'GNU tar'; then
+        export PAYLOAD_SKIP="GNU tar is not installed"
+        return 0
+    fi
+
     "$REPO_ROOT/ci/build_release_payload.sh" 0.0.0-test "$PAYLOAD" >/dev/null
     mkdir -p "$UNPACKED"
     tar -xzf "$PAYLOAD/sv-helper-linux.tar.gz" -C "$UNPACKED"
@@ -23,6 +30,7 @@ setup() {
     load 'test_helper/common'
     load 'test_helper/sv'
     common_setup
+    [ -z "${PAYLOAD_SKIP:-}" ] || skip "$PAYLOAD_SKIP"
 }
 
 @test "both platform archives and the standalone scripts are built" {
