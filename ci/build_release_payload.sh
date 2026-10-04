@@ -120,14 +120,17 @@ done
 
 # Reproducible archives: GNU tar can pin order, times and ownership. Other
 # tars cannot, and a release built with one would not match a rebuild.
-if ! tar --version 2>/dev/null | head -1 | grep -q 'GNU tar'; then
-	die "GNU tar is required to build reproducible archives"
+# Homebrew's gnu-tar installs it as gtar, so prefer that name when present.
+TAR=tar
+command -v gtar >/dev/null 2>&1 && TAR=gtar
+if ! "$TAR" --version 2>/dev/null | head -1 | grep -q 'GNU tar'; then
+	die "GNU tar is required to build reproducible archives (brew install gnu-tar on macOS)"
 fi
 
 for platform in $PLATFORMS; do
 	archive="$OUTDIR/$NAME-$platform.tar.gz"
 	echo "Building $(basename "$archive")"
-	tar --sort=name \
+	"$TAR" --sort=name \
 		--mtime='UTC 2020-01-01' \
 		--owner=0 --group=0 --numeric-owner \
 		--format=gnu \
