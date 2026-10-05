@@ -38,7 +38,7 @@ uninstall-stages:
 make-links: install
 
 # The suite lives in test/ and runs under the vendored bats submodules;
-# see test/README.md. A clone without them fetched gets a pointer to the
+# see test/Readme.adoc. A clone without them fetched gets a pointer to the
 # one command that fixes it rather than "no such file or directory".
 test:
 	@test -x $(BATS) || ( \

@@ -26,7 +26,7 @@ PROG=$(basename "$0")
 COMMANDS="sv-helper rsvlog runsvdir.sh"
 # Alias links, all pointing at sv-helper.
 ALIASES="sv-start sv-stop sv-restart sv-list svls sv-enable sv-disable sv-find"
-DOCS="README.md COPYING CHANGELOG.md"
+DOCS="Readme.adoc COPYING CHANGELOG.md"
 STAGES="1 2 3 ctrlaltdel"
 # runit decides whether to stop, and how, by the mode of these two files,
 # and chmods stopit itself. Linking them into /run/runit, as Void does,

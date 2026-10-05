@@ -13,7 +13,7 @@ FROM docker.io/library/alpine:3.22
 RUN apk add --no-cache runit
 
 WORKDIR /opt/sv-helper
-COPY install.sh rsvlog.sh runsvdir.sh sv-helper.sh README.md COPYING ./
+COPY install.sh rsvlog.sh runsvdir.sh sv-helper.sh Readme.adoc COPYING ./
 COPY etc ./etc
 
 # Two separate installations, because they mean different things: the
