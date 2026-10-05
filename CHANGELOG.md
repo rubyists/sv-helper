@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.2.1](https://github.com/rubyists/sv-helper/compare/v4.2.0...v4.2.1) (2026-10-05)
+
+
+### Bug Fixes
+
+* Explain, rather than pass through, a service runsv will not discuss ([#37](https://github.com/rubyists/sv-helper/issues/37)) ([01a47c2](https://github.com/rubyists/sv-helper/commit/01a47c23837f96643b97304c5d5bd63cb707844b)), closes [#1](https://github.com/rubyists/sv-helper/issues/1)
+
 ## [4.2.0](https://github.com/rubyists/sv-helper/compare/v4.1.0...v4.2.0) (2026-10-04)
 
 
