@@ -6,6 +6,23 @@ PID 1 in a container.
 
 ## Install
 
+In one line, on Linux or macOS:
+
+    curl -fsSL https://raw.githubusercontent.com/rubyists/sv-helper/main/bootstrap/install.sh | bash
+
+That installs the latest release in `~/.local`, or in `/usr/local` as
+root. To choose the release, the prefix, or both:
+
+    curl -fsSL https://raw.githubusercontent.com/rubyists/sv-helper/main/bootstrap/install.sh | VERSION=v4.2.0 bash
+    curl -fsSL https://raw.githubusercontent.com/rubyists/sv-helper/main/bootstrap/install.sh | bash -s -- --prefix /opt/sv
+
+It downloads the release's archive and checks it against that release's
+`SHA256SUMS`. If [packslip](https://packslip.dev) is installed, it also
+checks the release's signature against this repository's release
+workflow. Then it runs the `install.sh` inside the archive, passing on
+any arguments after `--`, so everything below about `install.sh` applies.
+It never uses `sudo`. Releases before v4.0.0 have nothing it can install.
+
 Homebrew, on macOS or Linux:
 
     brew install rubyists/tap/sv-helper
