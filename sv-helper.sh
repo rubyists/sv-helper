@@ -209,6 +209,51 @@ require_writable() {
 Re-run as its owner, or point SVDIR at a tree you own."
 }
 
+# runsv makes supervise/ 0700 and supervise/ok 0600, so only the account
+# running runsv can ask it anything - sv itself refuses everyone else with
+# "access denied". A supervise/ that does not exist yet is not a refusal:
+# that is a service runsv has not started, which sv reports on its own.
+status_denied() {
+	supervise=$1/supervise
+	[ -d "$supervise" ] || return 1
+	[ -x "$supervise" ] || return 0
+	[ -e "$supervise/ok" ] && [ ! -w "$supervise/ok" ]
+}
+
+# BSD and GNU stat disagree on everything except the word "stat". -L,
+# because Void and others link supervise/ into /run.
+owner_of() {
+	stat -L -c %U "$1" 2>/dev/null || stat -L -f %Su "$1"
+}
+
+# The command the caller just ran, as the account that can run it. sudo
+# drops SVDIR, so an explicit one is passed back through env.
+as_owner() {
+	owner=$1
+	shift
+	prefix=sudo
+	[ "$owner" = root ] || prefix="sudo -u $owner"
+	if [ -n "$SVDIR" ]
+	then
+		prefix="$prefix env SVDIR=$SVDIR"
+	fi
+	if [ $# -gt 0 ]
+	then
+		echo "$prefix $invoked $*"
+	else
+		echo "$prefix $invoked"
+	fi
+}
+
+# Report, rather than silently escalating, as require_writable does.
+die_denied() {
+	target=$1
+	shift
+	owner=$(owner_of "$target/supervise")
+	die 13 "Cannot ask runsv about $(basename "$target") as $(id -un): $target/supervise belongs to $owner.
+Run it as $owner instead: $(as_owner "$owner" "$@")"
+}
+
 # Create the invoking user's tree on demand; a system tree is never created.
 ensure_svdir() {
 	ln_dir=$1
@@ -260,19 +305,40 @@ list() {
 	ln_dir=$(svdir) || exit $?
 	if [ -n "$1" ]
 	then
+		if status_denied "$ln_dir/$1"
+		then
+			die_denied "$ln_dir/$1" "$1"
+		fi
 		sv s "$ln_dir/$1"
 		return 0
 	fi
 
 	echo "Listing All Services"
 	found=0
+	denied=0
+	denied_owner=
 	for entry in "$ln_dir"/*
 	do
 		[ -e "$entry" ] || continue
 		found=1
+		if status_denied "$entry"
+		then
+			denied=$((denied + 1))
+			denied_owner=${denied_owner:-$(owner_of "$entry/supervise")}
+			continue
+		fi
 		sv s "$entry" || true
 	done
 	[ "$found" -eq 1 ] || echo "No services enabled in $ln_dir"
+
+	# One summary rather than one "access denied" per service, and a
+	# failing exit, so a script reading svls cannot take silence for "all
+	# down".
+	if [ "$denied" -gt 0 ]
+	then
+		die 13 "Cannot ask runsv about $denied service(s) in $ln_dir as $(id -un): they belong to $denied_owner.
+Run it as $denied_owner instead: $(as_owner "$denied_owner")"
+	fi
 }
 
 # Names of every available service definition, deduplicated across sources.
@@ -295,6 +361,10 @@ control() {
 	[ -n "$service" ] || die 1 "Which service? ($(available | tr '\n' ' '))"
 	target=$(find_service "$service")
 	[ -n "$target" ] || die 1 "No such service '$service'"
+	if status_denied "$target"
+	then
+		die_denied "$target" "$service"
+	fi
 	sv "$action" "$target"
 }
 
@@ -359,8 +429,12 @@ usage() {
 sv_ensure_runit_on_path
 
 cmd=$(basename "$0")
+# How this was called, for repeating it back in a message: `svls`, or
+# `sv-helper ls` - never a bare `ls`.
+invoked=$cmd
 if [ "$cmd" = "sv-helper" ] || [ "$cmd" = "sv-helper.sh" ]
 then
+	invoked="$cmd $1"
 	cmd=$1
 	if [ -z "$cmd" ]
 	then
