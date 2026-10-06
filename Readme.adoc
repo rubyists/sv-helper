@@ -17,7 +17,7 @@ endif::[]
 :runit: https://smarden.org/runit/[runit]
 :packslip: https://packslip.dev[packslip]
 // x-release-please-start-version
-:sv-helper-version: 4.2.1
+:sv-helper-version: 4.3.0
 // x-release-please-end
 
 Helpers for administering {runit} services: as root on a runit system, as
