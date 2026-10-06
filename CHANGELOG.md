@@ -1,5 +1,16 @@
 # Changelog
 
+## [5.0.0](https://github.com/rubyists/sv-helper/compare/v4.3.0...v5.0.0) (2026-10-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* `./install.sh install-stages`, `./install.sh uninstall-stages` and `--runit-dir` are gone. Install sv-helper, then run `sv-helper install-stages`; the old commands say so and change nothing.
+
+### Features
+
+* Install the runit stages from sv-helper, on stage 2's own tree ([#44](https://github.com/rubyists/sv-helper/issues/44)) ([37c0bbb](https://github.com/rubyists/sv-helper/commit/37c0bbb101dc053f91e527c167607e530d7c6351))
+
 ## [4.3.0](https://github.com/rubyists/sv-helper/compare/v4.2.1...v4.3.0) (2026-10-06)
 
 
