@@ -17,10 +17,10 @@ WORKDIR /opt/sv-helper
 COPY install.sh rsvlog.sh runsvdir.sh sv-helper.sh Readme.adoc COPYING ./
 COPY etc ./etc
 
-# install-stages also links /etc/runit/stopit and reboot into /run/runit,
-# so runit's control files live somewhere this user can write.
+# sv-helper install-stages also links /etc/runit/stopit and reboot into
+# /run/runit, so runit's control files live somewhere this user can write.
 RUN ./install.sh install --prefix /usr/local \
-    && ./install.sh install-stages
+    && sv-helper install-stages
 
 # The user's primary group is 0, and everything it owns is group-writable,
 # so an arbitrary UID started with GID 0 (OpenShift's convention, or

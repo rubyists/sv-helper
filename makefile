@@ -26,12 +26,13 @@ uninstall:
 	./install.sh uninstall $(INSTALL_FLAGS)
 
 # Container stages are deliberately not part of `make install`: dropping
-# files in /etc/runit changes how the host boots.
+# files in /etc/runit changes how the host boots. sv-helper installs them,
+# from this checkout here and from its own installation everywhere else.
 install-stages:
-	./install.sh install-stages --destdir '$(DESTDIR)' --runit-dir '$(RUNIT_DIR)'
+	./sv-helper.sh install-stages --destdir '$(DESTDIR)' --runit-dir '$(RUNIT_DIR)'
 
 uninstall-stages:
-	./install.sh uninstall-stages --destdir '$(DESTDIR)' --runit-dir '$(RUNIT_DIR)'
+	./sv-helper.sh uninstall-stages --destdir '$(DESTDIR)' --runit-dir '$(RUNIT_DIR)'
 
 # The command links `sv-helper make-links` used to create. Here for the
 # muscle memory; `install` creates them too.

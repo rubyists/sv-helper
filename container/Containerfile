@@ -16,11 +16,11 @@ WORKDIR /opt/sv-helper
 COPY install.sh rsvlog.sh runsvdir.sh sv-helper.sh Readme.adoc COPYING ./
 COPY etc ./etc
 
-# Two separate installations, because they mean different things: the
-# commands go wherever you want them, the stages only ever go in /etc/runit
-# and change how the container boots.
+# Two separate steps, because they mean different things: the commands go
+# wherever you want them, the stages only ever go in /etc/runit and change
+# how the container boots. The second is the installed sv-helper's job.
 RUN ./install.sh install --prefix /usr/local \
-    && ./install.sh install-stages
+    && sv-helper install-stages
 
 # Service definitions, and the tree runsvdir actually supervises. Enabling
 # a service is a symlink from the tree to its definition, exactly as it is

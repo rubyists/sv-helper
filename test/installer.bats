@@ -154,48 +154,59 @@ install_here() {
     refute [ -e /usr/local/bin/sv-helper ]
 }
 
-@test "install does not install the container stages" {
+@test "install does not put the container stages live" {
     local stage="$TEST_TMP/stage"
     "$INSTALL" install --destdir "$stage" --prefix /usr/local
     refute [ -e "$stage/etc/runit/2" ]
     refute [ -L "$stage/etc/runit/stopit" ]
 }
 
-@test "install-stages puts the runit stages in place as a separate step" {
-    local stage="$TEST_TMP/stage"
+@test "install puts the stages beside the commands, as data for sv-helper" {
+    install_here
 
-    run "$INSTALL" install-stages --destdir "$stage"
-    assert_success
-
+    local name
     for name in 1 2 3 ctrlaltdel
     do
-        assert [ -f "$stage/etc/runit/$name" ]
-        assert [ -x "$stage/etc/runit/$name" ]
+        assert [ -x "$PREFIX/share/sv-helper/runit/$name" ]
+        cmp "$REPO_ROOT/etc/runit/$name" "$PREFIX/share/sv-helper/runit/$name"
     done
 }
 
-@test "install-stages links runit's control files into /run/runit" {
-    # So a container running as a regular user can arm stopit without
-    # /etc/runit being writable. See container/Readme.md.
+@test "the stages follow --bindir, so the installed sv-helper finds them" {
+    local elsewhere="$TEST_TMP/elsewhere/bin"
+    run install_here --bindir "$elsewhere"
+    assert_success
+    assert [ -f "$TEST_TMP/elsewhere/share/sv-helper/runit/2" ]
+
+    run "$elsewhere/sv-helper" paths
+    # Physical, as sv-helper prints it: macOS's temporary directory is
+    # behind a symlink.
+    assert_line "stage dir:    $(cd "$TEST_TMP/elsewhere/share/sv-helper/runit" && pwd -P)"
+}
+
+@test "uninstall takes the stages back too" {
+    install_here
+
+    run "$INSTALL" uninstall --prefix "$PREFIX"
+    assert_success
+    refute [ -e "$PREFIX/share/sv-helper" ]
+}
+
+@test "install-stages and uninstall-stages point at sv-helper, and change nothing" {
     local stage="$TEST_TMP/stage" name
-
-    run "$INSTALL" install-stages --destdir "$stage"
-    assert_success
-
-    for name in stopit reboot
+    for name in install-stages uninstall-stages
     do
-        assert_equal "$(readlink "$stage/etc/runit/$name")" "/run/runit/$name"
+        run "$INSTALL" "$name" --destdir "$stage"
+        assert_failure
+        assert_output --partial "run: sv-helper $name"
     done
+    refute [ -e "$stage" ]
 }
 
-@test "uninstall-stages takes them back" {
-    local stage="$TEST_TMP/stage"
-    "$INSTALL" install-stages --destdir "$stage"
-
-    run "$INSTALL" uninstall-stages --destdir "$stage"
-    assert_success
-    refute [ -e "$stage/etc/runit/2" ]
-    refute [ -L "$stage/etc/runit/stopit" ]
+@test "--runit-dir is no longer an install.sh option" {
+    run "$INSTALL" install --prefix "$PREFIX" --runit-dir /etc/runit
+    assert_failure
+    assert_output --partial "Unknown option '--runit-dir'"
 }
 
 @test "the makefile drives the same installer" {

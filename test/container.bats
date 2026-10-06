@@ -128,7 +128,8 @@ in_container() {
 @test "stage 3 ran to completion" {
     run "$ENGINE" logs "$CONTAINER_NAME"
     assert_output --partial "enter stage: /etc/runit/3"
-    assert_output --partial "stage 3: stopping services"
+    # The tree stage 2 recorded, not one stage 3 worked out for itself.
+    assert_output --partial "stage 3: stopping services in /etc/service (recorded by stage 2"
     assert_output --partial "stage 3: letting log services finish"
     assert_output --partial "stage 3: done"
 }

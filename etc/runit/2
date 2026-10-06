@@ -12,6 +12,10 @@
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 export PATH
 
+# Tells runsvdir.sh to record the tree it chooses, for stage 3.
+SV_RUNIT_STAGE=2
+export SV_RUNIT_STAGE
+
 for candidate in runsvdir.sh /usr/local/bin/runsvdir.sh /usr/bin/runsvdir.sh
 do
 	if command -v "$candidate" >/dev/null 2>&1

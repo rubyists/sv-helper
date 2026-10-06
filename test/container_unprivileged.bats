@@ -12,11 +12,15 @@
 #   NOGROUP_NAME    a UID without GID 0, which cannot write the state the
 #                   image prepared. Stage 1 has to refuse to boot, and the
 #                   container still has to exit by itself.
+#   HOSTNAME_NAME   the image's user, with its tree chosen by SV_ROOT and
+#                   hostname. Stage 3 and sv-helper have to act on that
+#                   tree, which neither of them could work out alone.
 
 IMAGE=sv-helper-unprivileged-test
 USER_NAME=sv-helper-unprivileged-test
 ARBITRARY_NAME=sv-helper-unprivileged-test-arbitrary
 NOGROUP_NAME=sv-helper-unprivileged-test-nogroup
+HOSTNAME_NAME=sv-helper-unprivileged-test-hostname
 # Inside rootless podman's usual 65536 subordinate IDs, so the test runs
 # without any host configuration.
 ARBITRARY_UID=54321
@@ -24,6 +28,11 @@ STOP_TIMEOUT=30
 USER_HOME=/home/sv
 USER_SVDIR=$USER_HOME/.local/state/sv-helper/service
 USER_LOG=$USER_HOME/.local/state/sv-helper/log/hello/current
+# web-<replicaset>-<pod>, as Kubernetes names a Deployment's pods. Two
+# trailing components come off, leaving "web".
+HOSTNAME_HOST=web-7f9c4-x2k
+HOSTNAME_ROOT=$USER_HOME/app
+HOSTNAME_SVDIR=$HOSTNAME_ROOT/service/web
 
 setup_file() {
     load 'test_helper/container'
@@ -37,7 +46,7 @@ setup_file() {
     fi
     export ENGINE
 
-    "$ENGINE" rm -f "$USER_NAME" "$ARBITRARY_NAME" "$NOGROUP_NAME" >/dev/null 2>&1 || true
+    "$ENGINE" rm -f "$USER_NAME" "$ARBITRARY_NAME" "$NOGROUP_NAME" "$HOSTNAME_NAME" >/dev/null 2>&1 || true
     "$ENGINE" build -q -f "$REPO_ROOT/container/Containerfile.unprivileged" \
         -t "$IMAGE" "$REPO_ROOT" >/dev/null
 
@@ -49,12 +58,17 @@ setup_file() {
         --name "$ARBITRARY_NAME" "$IMAGE" >/dev/null
     "$ENGINE" run -d --cap-add SYS_BOOT --user "$ARBITRARY_UID:$ARBITRARY_UID" \
         --name "$NOGROUP_NAME" "$IMAGE" >/dev/null
+    # The tree is made at boot, then runit takes over as PID 1 through exec.
+    "$ENGINE" run -d --cap-add SYS_BOOT --hostname "$HOSTNAME_HOST" \
+        -e "SV_ROOT=$HOSTNAME_ROOT" --name "$HOSTNAME_NAME" "$IMAGE" \
+        sh -c "mkdir -p $HOSTNAME_SVDIR && ln -s $USER_HOME/.config/sv-helper/sv/hello $HOSTNAME_SVDIR/hello && exec /usr/sbin/runit" \
+        >/dev/null
     sleep 6
 }
 
 teardown_file() {
     [ -n "${ENGINE:-}" ] || return 0
-    "$ENGINE" rm -f "$USER_NAME" "$ARBITRARY_NAME" "$NOGROUP_NAME" >/dev/null 2>&1 || true
+    "$ENGINE" rm -f "$USER_NAME" "$ARBITRARY_NAME" "$NOGROUP_NAME" "$HOSTNAME_NAME" >/dev/null 2>&1 || true
 }
 
 setup() {
@@ -181,4 +195,36 @@ assert_stops_cleanly() {
     refute_output --partial "enter stage: /etc/runit/2"
     assert_output --partial "stage 3: done"
     assert_equal "$("$ENGINE" inspect "$NOGROUP_NAME" --format '{{.State.Status}}')" "exited"
+}
+
+@test "a tree chosen by SV_ROOT and hostname is what stage 2 supervises" {
+    run "$ENGINE" logs "$HOSTNAME_NAME"
+    assert_output --partial "Starting runsvdir in $HOSTNAME_SVDIR"
+
+    run "$ENGINE" exec "$HOSTNAME_NAME" cat /run/runit/svdir
+    assert_success
+    assert_output "$HOSTNAME_SVDIR"
+}
+
+@test "sv-helper manages the tree stage 2 chose by hostname" {
+    # Without SV_ROOT's rules of its own, sv-helper would list the user's
+    # default tree, which holds a hello that nothing is supervising.
+    run "$ENGINE" exec "$HOSTNAME_NAME" svls
+    assert_success
+    assert_output --regexp "run: $HOSTNAME_SVDIR/hello:"
+}
+
+@test "stage 3 stops the tree stage 2 chose by hostname" {
+    local log=$USER_HOME/.local/state/sv-helper/log/hello/current before after
+    before=$("$ENGINE" exec "$HOSTNAME_NAME" sh -c "wc -l < $log" | tr -d ' ')
+
+    assert_stops_cleanly "$HOSTNAME_NAME"
+
+    run "$ENGINE" logs "$HOSTNAME_NAME"
+    assert_output --partial "stage 3: stopping services in $HOSTNAME_SVDIR (recorded by stage 2"
+    assert_output --partial "stage 3: letting log services finish"
+
+    "$ENGINE" cp "$HOSTNAME_NAME:$log" "$TEST_TMP/current"
+    after=$(wc -l < "$TEST_TMP/current" | tr -d ' ')
+    assert [ "$after" -ge "$before" ]
 }

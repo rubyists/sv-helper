@@ -120,6 +120,27 @@ setup() {
     assert_success
 }
 
+@test "sv-helper installed from the archive can install the stages" {
+    local prefix="$TEST_TMP/from archive" root="$TEST_TMP/root"
+    "$TREE/install.sh" install --prefix "$prefix" >/dev/null 2>&1
+
+    run as_user "$TEST_TMP" "$prefix/bin/sv-helper" install-stages --destdir "$root"
+    assert_success
+    cmp "$TREE/etc/runit/3" "$root/etc/runit/3"
+}
+
+@test "sv-helper run straight from the unpacked archive finds its stages" {
+    # What a packslip install runs: the archive's own bin/sv-helper, never
+    # installed, reached through a link on PATH.
+    mkdir -p "$TEST_TMP/path"
+    ln -s "$TREE/bin/sv-helper" "$TEST_TMP/path/sv-helper"
+
+    run as_user "$TEST_TMP" "$TEST_TMP/path/sv-helper" paths
+    # Physical, as sv-helper prints it: macOS's temporary directory is
+    # behind a symlink.
+    assert_line "stage dir:    $(cd "$TREE/etc/runit" && pwd -P)"
+}
+
 @test "the standalone scripts are the same files the archive holds" {
     run diff "$PAYLOAD/rsvlog" "$TREE/bin/rsvlog"
     assert_success

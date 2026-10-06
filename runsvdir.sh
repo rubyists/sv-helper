@@ -23,6 +23,13 @@
 # Hostname selection, used with SV_ROOT, tries $HOSTNAME, then the hostname
 # with one trailing -component removed, then two, each optionally prefixed
 # with $SV_PREFIX, and falls back to "generic".
+#
+#   runsvdir.sh --print-svdir   print the tree it would supervise, and
+#                               change nothing
+#
+# As runit's stage 2 it also records the tree it chose in
+# ${SV_SVDIR_RECORD:-/run/runit/svdir}. Stage 3 stops exactly that tree,
+# and sv-helper manages it, rather than either working it out again.
 
 set -e
 
@@ -36,7 +43,15 @@ then
 	exit 0
 fi
 
-exec 2>&1
+# Printing only, the answer is the whole of stdout, so the chatter below
+# has to stay on stderr rather than being folded into it.
+print_only=0
+if [ "$1" = --print-svdir ]
+then
+	print_only=1
+else
+	exec 2>&1
+fi
 
 warn() {
 	echo "$@" >&2
@@ -164,6 +179,32 @@ default_svdir() {
 	printf '%s/sv-helper/service\n' "${XDG_STATE_HOME:-$HOME/.local/state}"
 }
 
+# runit starts stage 3 itself, not from stage 2, so nothing stage 2 decides
+# reaches it - not even the SVDIR exported below. This file is how it finds
+# out. Written aside and moved into place, so a reader never sees half a
+# path. Failing to write it is not worth refusing to boot over: stage 3
+# falls back to asking --print-svdir, which is at least the same code.
+record_svdir() {
+	record=$1
+	if ! printf '%s\n' "$servicedir" >"$record.$$" 2>/dev/null
+	then
+		warn "Could not write $record; stage 3 will have to work the tree out again"
+		return 0
+	fi
+	if ! mv -f "$record.$$" "$record"
+	then
+		rm -f "$record.$$"
+		warn "Could not write $record; stage 3 will have to work the tree out again"
+	fi
+}
+
+# Only runit's stage 2 records anything. etc/runit/2 says so through
+# SV_RUNIT_STAGE; an /etc/runit/2 that is a link straight to this script
+# says so by its name. A user running this on a host leaves no record.
+is_stage_2() {
+	[ "${SV_RUNIT_STAGE:-}" = 2 ] || [ "$0" = /etc/runit/2 ]
+}
+
 ensure_runit_on_path
 
 if [ -z "$HOSTNAME" ]
@@ -196,6 +237,12 @@ else
 	fi
 fi
 
+if [ "$print_only" -eq 1 ]
+then
+	printf '%s\n' "$servicedir"
+	exit 0
+fi
+
 # Prepare the tree rather than refusing to start: a regular user running
 # this directly has no stage 1 to have made it for them.
 if [ ! -d "$servicedir" ]
@@ -215,6 +262,16 @@ then
 		ln -sfn "$servicedir" /service
 	fi
 fi
+
+if is_stage_2
+then
+	# Absolute, because stage 3 does not start in this directory.
+	servicedir=$(cd "$servicedir" && pwd)
+	record_svdir "${SV_SVDIR_RECORD:-/run/runit/svdir}"
+fi
+# runsvdir hands its environment to every service. A service has no
+# business knowing which stage started it.
+unset SV_RUNIT_STAGE
 
 SVDIR=$servicedir
 export SVDIR
