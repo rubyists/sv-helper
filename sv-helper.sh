@@ -24,7 +24,7 @@
 set -e
 
 # release-please rewrites this line on every release, through the marker.
-sv_version=4.3.0 # x-release-please-version
+sv_version=5.0.0 # x-release-please-version
 
 commands="sv-list svls sv-find sv-enable sv-disable sv-start sv-stop sv-restart"
 

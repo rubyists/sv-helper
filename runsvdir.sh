@@ -34,7 +34,7 @@
 set -e
 
 # release-please rewrites this line on every release, through the marker.
-sv_version=4.3.0 # x-release-please-version
+sv_version=5.0.0 # x-release-please-version
 
 # Before anything resolves, creates or supervises a tree.
 if [ "$1" = --version ]
