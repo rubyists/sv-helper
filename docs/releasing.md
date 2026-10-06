@@ -121,7 +121,7 @@ Each script reports its version with `--version` from its own
 beside it. release-please rewrites every line marked
 `x-release-please-version` in the files listed under `extra-files` in
 `.release-please-config.json`. That covers the three scripts, `PKGBUILD`,
-and the example in the README, which is marked as a block.
+and the version attribute in `Readme.adoc`, which is marked as a block.
 `test/version.bats` fails if a marked file is missing from that list or
 holds a version other than `version.txt`'s, so a new file with a version
 in it cannot be forgotten.

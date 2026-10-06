@@ -45,7 +45,7 @@ container/Containerfile:container/Containerfile
 container/sv/hello/run:container/sv/hello/run
 container/sv/hello/log/conf:container/sv/hello/log/conf
 container/sv/crasher/run:container/sv/crasher/run
-README.md:share/doc/sv-helper/README.md
+Readme.adoc:share/doc/sv-helper/Readme.adoc
 COPYING:share/doc/sv-helper/COPYING
 CHANGELOG.md:share/doc/sv-helper/CHANGELOG.md
 conf:share/doc/sv-helper/conf.example

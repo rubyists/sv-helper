@@ -56,7 +56,7 @@ install_here() {
 
 @test "installs the documentation" {
     install_here
-    assert [ -f "$DOC/README.md" ]
+    assert [ -f "$DOC/Readme.adoc" ]
     assert [ -f "$DOC/COPYING" ]
 }
 

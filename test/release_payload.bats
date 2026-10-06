@@ -85,7 +85,7 @@ setup() {
 }
 
 @test "the archive bundles the documentation" {
-    assert [ -f "$TREE/share/doc/sv-helper/README.md" ]
+    assert [ -f "$TREE/share/doc/sv-helper/Readme.adoc" ]
     assert [ -f "$TREE/share/doc/sv-helper/COPYING" ]
     assert [ -f "$TREE/share/doc/sv-helper/CHANGELOG.md" ]
 }

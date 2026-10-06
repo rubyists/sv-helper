@@ -27,7 +27,7 @@
         },
         {
           "type": "generic",
-          "path": "README.md"
+          "path": "Readme.adoc"
         }
       ],
       "changelog-sections": [

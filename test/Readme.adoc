@@ -1,0 +1,50 @@
+= Tests
+Tj Vanderpoel (bougyman) <bougyman@users.noreply.github.com>
+:toc: right
+:sectanchors:
+:icons: font
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+endif::[]
+:bats: https://github.com/bats-core/bats-core[bats]
+
+The suite runs under {bats}, which is vendored here as a git submodule
+along with `bats-support` and `bats-assert`. Nothing is installed
+system-wide.
+
+== Running them
+
+A fresh clone has empty submodule directories, so fetch them once:
+
+[source,bash]
+----
+$ git submodule update --init --recursive
+----
+
+Then:
+
+[source,bash]
+----
+$ make test                                     # every .bats file in test/
+$ test/bats/bin/bats test/smoke.bats            # one file
+$ test/bats/bin/bats --filter 'scratch' test/   # one test by name
+----
+
+== Writing a test
+
+Each file starts the same way, which loads both helper libraries and sets
+`REPO_ROOT` and `TEST_TMP`:
+
+[source,bash]
+----
+setup() {
+    load 'test_helper/common'
+    common_setup
+}
+----
+
+`REPO_ROOT` is the checkout under test. Call the scripts through it
+rather than relying on `PATH`. `TEST_TMP` is a scratch directory bats
+removes after each test, so a test never has to clean up after itself or
+touch anything outside it.
