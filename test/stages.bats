@@ -123,7 +123,9 @@ stages() {
 
     run as_user "$HOME_DIR" "$prefix/bin/sv-helper" paths
     assert_success
-    assert_line "stage dir:    $prefix/share/sv-helper/runit"
+    # Physical, as sv-helper prints it: macOS's temporary directory is
+    # behind a symlink.
+    assert_line "stage dir:    $(cd "$prefix/share/sv-helper/runit" && pwd -P)"
 
     run as_user "$HOME_DIR" "$prefix/bin/sv-helper" install-stages --destdir "$ROOT"
     assert_success

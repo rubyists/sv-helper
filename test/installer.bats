@@ -179,7 +179,9 @@ install_here() {
     assert [ -f "$TEST_TMP/elsewhere/share/sv-helper/runit/2" ]
 
     run "$elsewhere/sv-helper" paths
-    assert_line "stage dir:    $TEST_TMP/elsewhere/share/sv-helper/runit"
+    # Physical, as sv-helper prints it: macOS's temporary directory is
+    # behind a symlink.
+    assert_line "stage dir:    $(cd "$TEST_TMP/elsewhere/share/sv-helper/runit" && pwd -P)"
 }
 
 @test "uninstall takes the stages back too" {

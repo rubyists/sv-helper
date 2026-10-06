@@ -136,7 +136,9 @@ setup() {
     ln -s "$TREE/bin/sv-helper" "$TEST_TMP/path/sv-helper"
 
     run as_user "$TEST_TMP" "$TEST_TMP/path/sv-helper" paths
-    assert_line "stage dir:    $TREE/etc/runit"
+    # Physical, as sv-helper prints it: macOS's temporary directory is
+    # behind a symlink.
+    assert_line "stage dir:    $(cd "$TREE/etc/runit" && pwd -P)"
 }
 
 @test "the standalone scripts are the same files the archive holds" {
