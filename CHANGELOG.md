@@ -1,5 +1,17 @@
 # Changelog
 
+## [4.3.0](https://github.com/rubyists/sv-helper/compare/v4.2.1...v4.3.0) (2026-10-06)
+
+
+### Features
+
+* Add a curl | bash bootstrap installer ([#40](https://github.com/rubyists/sv-helper/issues/40)) ([f45a625](https://github.com/rubyists/sv-helper/commit/f45a625fccc997de3a2180ede629b1165e2751a3)), closes [#39](https://github.com/rubyists/sv-helper/issues/39)
+
+
+### Documentation
+
+* Author the readmes in AsciiDoc ([#41](https://github.com/rubyists/sv-helper/issues/41)) ([7960aee](https://github.com/rubyists/sv-helper/commit/7960aeee36f429153361109ccc49793607c26e83))
+
 ## [4.2.1](https://github.com/rubyists/sv-helper/compare/v4.2.0...v4.2.1) (2026-10-05)
 
 
