@@ -92,9 +92,21 @@ whoever runit runs as, and `/etc/runit` does not have to be writable.
 
 `--runit-dir` moves them if your runit package uses another path, and
 `--destdir` stages them for a package build. `--dry-run` shows what
-either command would do. `install-stages` refuses to overwrite a stage
-file it did not write, so it will not quietly replace a distribution's
-own, and `uninstall-stages` removes only what it put there.
+either command would do.
+
+**Over a runit package's own stages.** Debian's and Void's runit ship
+their own `/etc/runit`. `install-stages` checks every file before it
+writes any, and refuses all of them rather than replacing one. With
+`--force` it sets the package's files aside in
+`/etc/runit/.sv-helper-displaced` instead of deleting them, and
+`uninstall-stages` puts them back exactly as they were.
+
+What it installed is recorded in `/etc/runit/.sv-helper-installed`, and
+`uninstall-stages` removes exactly that. Looking the same is not
+ownership: Void links `stopit` and `reboot` exactly where sv-helper
+would, so they are kept as they are and never removed. A stage changed
+since it was installed is left alone, unless `--force` says otherwise. A
+newer sv-helper replaces its own stages without `--force`.
 
 `install.sh` puts the stages in `share/sv-helper/runit` beside the
 commands, where they do nothing, so an installed sv-helper always has

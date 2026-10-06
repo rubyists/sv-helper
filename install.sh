@@ -123,6 +123,13 @@ stage_source_for() {
 	printf '%s\n' "$SRC/etc/runit/$stage"
 }
 
+# Whether two files hold the same bytes. cksum rather than cmp, because
+# cmp is diffutils, which a minimal image (Void's, for one) does not have;
+# cksum is POSIX, and in coreutils and busybox alike.
+same_file() {
+	[ "$(cksum <"$1")" = "$(cksum <"$2")" ]
+}
+
 # A destination is safe to write when it is absent, or already exactly what
 # we would write. Anything else is someone else's file, and saying so beats
 # silently replacing it.
@@ -137,7 +144,7 @@ check_file_conflict() {
 Remove it, or re-run with --force."
 	fi
 	[ -d "$dest" ] && die "$dest is a directory. Remove it, or choose another --bindir."
-	cmp -s "$src" "$dest" && return 0
+	same_file "$src" "$dest" && return 0
 	die "$dest already exists with different contents.
 Remove it, or re-run with --force."
 }
@@ -196,7 +203,7 @@ remove_file() {
 	src=$1
 	dest=$2
 	[ -e "$dest" ] || [ -L "$dest" ] || return 0
-	if [ "$FORCE" -eq 0 ] && [ -f "$src" ] && [ ! -L "$dest" ] && ! cmp -s "$src" "$dest"
+	if [ "$FORCE" -eq 0 ] && [ -f "$src" ] && [ ! -L "$dest" ] && ! same_file "$src" "$dest"
 	then
 		warn "skipping $dest: contents differ from what was installed"
 		return 0

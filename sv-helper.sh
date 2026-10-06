@@ -35,6 +35,10 @@ commands="sv-list svls sv-find sv-enable sv-disable sv-start sv-stop sv-restart"
 sv_stages="1 2 3 ctrlaltdel"
 sv_controls="stopit reboot"
 sv_control_dir=/run/runit
+# Beside the stages: what install-stages put there, and what --force set
+# aside for uninstall-stages to put back.
+stage_manifest_name=.sv-helper-installed
+stage_displaced_name=.sv-helper-displaced
 sv_uname=$(uname -s)
 
 warn() {
@@ -480,7 +484,9 @@ the machine boots, so it is never done by installing sv-helper itself.
 Options:
   --runit-dir DIR    Where the stages go (default: /etc/runit)
   --destdir DIR      Staging root, prepended at install time only
-  --force            Replace files and links these commands did not create
+  --force            Install over files sv-helper did not write, setting
+                     them aside in $stage_displaced_name for uninstall-stages
+                     to put back; remove its own even if changed since
   --dry-run          Print what would happen, change nothing
 
 The stages come from \$SV_STAGE_DIR when set, and otherwise from:
@@ -497,132 +503,288 @@ stage_run() {
 	"$@"
 }
 
-# A destination is safe to write when it is absent, or already exactly what
-# we would write. Anything else is someone else's file, and saying so beats
-# silently replacing it.
-stage_check_file() {
-	src=$1
-	dest=$2
-	[ -e "$dest" ] || [ -L "$dest" ] || return 0
-	[ "$force" -eq 1 ] && return 0
+# What is at a destination, in the form the manifest records it: "file
+# CHECKSUM", "link TARGET", "dir", or nothing at all. cksum rather than
+# cmp, because cmp is diffutils, which a minimal image (Void's, for one)
+# does not have; cksum is POSIX, and in coreutils and busybox alike.
+stage_sum() {
+	# shellcheck disable=SC2046  # its two fields, split on purpose
+	set -- $(cksum <"$1")
+	printf '%s-%s\n' "$1" "$2"
+}
+
+stage_current() {
+	dest=$runitdir/$1
 	if [ -L "$dest" ]
 	then
-		die 1 "$dest is a symlink to $(readlink "$dest"), not a stage sv-helper wrote.
-Remove it, or re-run with --force."
-	fi
-	[ -d "$dest" ] && die 1 "$dest is a directory. Remove it, or choose another --runit-dir."
-	cmp -s "$src" "$dest" && return 0
-	die 1 "$dest already exists with different contents.
-Remove it, or re-run with --force."
-}
-
-stage_check_link() {
-	target=$1
-	dest=$2
-	[ -e "$dest" ] || [ -L "$dest" ] || return 0
-	[ "$force" -eq 1 ] && return 0
-	if [ -L "$dest" ]
+		printf 'link %s\n' "$(readlink "$dest")"
+	elif [ -d "$dest" ]
 	then
-		[ "$(readlink "$dest")" = "$target" ] && return 0
-		die 1 "$dest is a symlink to $(readlink "$dest"), not to $target.
-Remove it, or re-run with --force."
-	fi
-	die 1 "$dest already exists and is not a symlink to $target.
-Remove it, or re-run with --force."
-}
-
-stage_install_file() {
-	src=$1
-	dest=$2
-	stage_check_file "$src" "$dest"
-	stage_run rm -f "$dest"
-	stage_run cp "$src" "$dest"
-	stage_run chmod 0755 "$dest"
-	echo "installed $dest"
-}
-
-stage_install_link() {
-	target=$1
-	dest=$2
-	stage_check_link "$target" "$dest"
-	stage_run rm -f "$dest"
-	stage_run ln -s "$target" "$dest"
-	echo "linked    $dest -> $target"
-}
-
-stage_is_ours() {
-	[ ! -L "$2" ] && cmp -s "$1" "$2"
-}
-
-# Remove only what we put there. An unrelated file at the same path is left
-# alone and reported, so an uninstall never eats a neighbour's work.
-stage_remove_file() {
-	src=$1
-	dest=$2
-	[ -e "$dest" ] || [ -L "$dest" ] || return 0
-	if [ "$force" -eq 0 ] && ! stage_is_ours "$src" "$dest"
+		echo dir
+	elif [ -e "$dest" ]
 	then
-		warn "skipping $dest: not the stage sv-helper installed"
+		printf 'file %s\n' "$(stage_sum "$dest")"
+	fi
+}
+
+stage_is_control() {
+	case " $sv_controls " in
+	*" $1 "*) return 0 ;;
+	esac
+	return 1
+}
+
+# What install-stages would put there.
+stage_wanted() {
+	if stage_is_control "$1"
+	then
+		printf 'link %s\n' "$sv_control_dir/$1"
+	else
+		printf 'file %s\n' "$(stage_sum "$stage_dir/$1")"
+	fi
+}
+
+# The manifest is what install-stages put in place, one entry per line:
+#
+#   file NAME CHECKSUM
+#   link NAME TARGET
+#
+# so uninstall-stages removes exactly that. Looking the same is not
+# ownership: Void's runit ships stopit and reboot linked exactly where ours
+# go, and they are not ours to remove.
+stage_recorded() {
+	printf '%s\n' "$manifest" | while read -r kind entry value
+	do
+		if [ "$entry" = "$1" ]
+		then
+			printf '%s %s\n' "$kind" "$value"
+			break
+		fi
+	done
+}
+
+stage_recorded_names() {
+	printf '%s\n' "$manifest" | while read -r kind entry value
+	do
+		[ -n "$entry" ] && printf '%s\n' "$entry"
+	done
+	return 0
+}
+
+stage_load_manifest() {
+	manifest=
+	[ -f "$manifest_file" ] || return 0
+	manifest=$(cat "$manifest_file") || die 1 "Could not read $manifest_file"
+}
+
+# Written aside and moved into place after every change, so an install
+# interrupted halfway still knows what it had already done.
+stage_save_manifest() {
+	if [ "$dry_run" -eq 1 ]
+	then
 		return 0
 	fi
-	stage_run rm -f "$dest"
-	echo "removed   $dest"
+	if [ -z "$manifest" ]
+	then
+		rm -f "$manifest_file"
+		return 0
+	fi
+	if ! printf '%s\n' "$manifest" >"$manifest_file.$$"
+	then
+		rm -f "$manifest_file.$$"
+		die 1 "Could not write $manifest_file"
+	fi
+	mv -f "$manifest_file.$$" "$manifest_file" || die 1 "Could not write $manifest_file"
 }
 
-stage_remove_link() {
-	target=$1
-	dest=$2
-	if [ ! -L "$dest" ]
+stage_forget() {
+	manifest=$(printf '%s\n' "$manifest" | while read -r kind entry value
+	do
+		[ -n "$entry" ] || continue
+		[ "$entry" = "$1" ] || printf '%s %s %s\n' "$kind" "$entry" "$value"
+	done)
+}
+
+# stage_record NAME "KIND VALUE"
+stage_record() {
+	stage_forget "$1"
+	line="${2%% *} $1 ${2#* }"
+	if [ -n "$manifest" ]
 	then
-		[ -e "$dest" ] && warn "skipping $dest: not a symlink"
-		return 0
+		manifest="$manifest
+$line"
+	else
+		manifest=$line
 	fi
-	if [ "$force" -eq 0 ] && [ "$(readlink "$dest")" != "$target" ]
+	stage_save_manifest
+}
+
+# What install-stages will do with one destination, decided before anything
+# is written, so a refusal never leaves half an installation behind:
+#
+#   write     nothing is there
+#   replace   ours, as we left it (or changed since, with --force)
+#   adopt     not recorded, but byte for byte the stage we would write: an
+#             installation from before there was a manifest
+#   keep      not ours, but already exactly the link we would make
+#   displace  someone else's, set aside for uninstall-stages to restore
+#             (--force only)
+stage_plan() {
+	name=$1
+	dest=$runitdir/$name
+	current=$(stage_current "$name")
+	wanted=$(stage_wanted "$name")
+	recorded=$(stage_recorded "$name")
+	if [ -z "$current" ]
 	then
-		warn "skipping $dest: points at $(readlink "$dest"), not $target"
-		return 0
+		echo write
+	elif [ "$current" = dir ]
+	then
+		die 1 "$dest is a directory. Remove it, or choose another --runit-dir."
+	elif [ -n "$recorded" ]
+	then
+		if [ "$current" != "$recorded" ] && [ "$force" -eq 0 ]
+		then
+			die 1 "$dest has changed since sv-helper installed it.
+Re-run with --force to replace it anyway."
+		fi
+		echo replace
+	elif [ "$current" = "$wanted" ]
+	then
+		if stage_is_control "$name"
+		then
+			echo keep
+		else
+			echo adopt
+		fi
+	elif [ "$force" -eq 0 ]
+	then
+		die 1 "$dest is already there, and sv-helper did not install it.
+It is most likely your runit package's own. Re-run with --force to set
+it aside in $displaced; uninstall-stages puts it back."
+	elif [ -e "$displaced/$name" ] || [ -L "$displaced/$name" ]
+	then
+		die 1 "$displaced/$name is already there, so $dest has nowhere to be set aside.
+Put it back, or remove it, first."
+	else
+		echo displace
 	fi
-	stage_run rm -f "$dest"
-	echo "removed   $dest"
+}
+
+stage_apply() {
+	name=$1
+	plan=$2
+	dest=$runitdir/$name
+	case "$plan" in
+	keep)
+		echo "kept      $dest (already right, and not sv-helper's)"
+		return 0
+		;;
+	adopt)
+		echo "adopted   $dest"
+		stage_record "$name" "$(stage_wanted "$name")"
+		return 0
+		;;
+	displace)
+		stage_run mkdir -p "$displaced"
+		stage_run mv "$dest" "$displaced/$name"
+		echo "set aside $dest -> $displaced/$name"
+		;;
+	replace)
+		stage_run rm -f "$dest"
+		;;
+	esac
+	if stage_is_control "$name"
+	then
+		stage_run ln -s "$sv_control_dir/$name" "$dest"
+		echo "linked    $dest -> $sv_control_dir/$name"
+	else
+		stage_run cp "$stage_dir/$name" "$dest"
+		stage_run chmod 0755 "$dest"
+		echo "installed $dest"
+	fi
+	stage_record "$name" "$(stage_wanted "$name")"
+}
+
+stage_require_writable() {
+	[ "$dry_run" -eq 1 ] && return 0
+	[ -d "$runitdir" ] || return 0
+	[ -w "$runitdir" ] && return 0
+	# Report, rather than silently escalating, as require_writable does.
+	die 13 "Cannot $1 the runit stages: $runitdir is not writable by $(id -un).
+Re-run as its owner."
 }
 
 install_stages() {
+	stage_require_writable install
+	stage_load_manifest
+
+	plans=
+	for name in $sv_stages $sv_controls
+	do
+		plan=$(stage_plan "$name") || exit $?
+		plans="$plans $name:$plan"
+	done
+
 	if [ ! -d "$runitdir" ]
 	then
 		stage_run mkdir -p "$runitdir" || die 1 "Could not create $runitdir"
 	fi
-	# Report, rather than silently escalating, as require_writable does.
-	if [ "$dry_run" -eq 0 ] && [ ! -w "$runitdir" ]
-	then
-		die 13 "Cannot install the runit stages: $runitdir is not writable by $(id -un).
-Re-run as its owner."
-	fi
-	for stage in $sv_stages
+	for entry in $plans
 	do
-		stage_install_file "$stage_dir/$stage" "$runitdir/$stage"
-	done
-	for control in $sv_controls
-	do
-		stage_install_link "$sv_control_dir/$control" "$runitdir/$control"
+		stage_apply "${entry%%:*}" "${entry#*:}"
 	done
 	echo
 	echo "runit stages installed in $runitdir"
 }
 
+# Exactly what the manifest says, and whatever --force set aside put back
+# where it was. Something changed since it was installed is left alone,
+# and stays in the manifest, unless --force says otherwise.
 uninstall_stages() {
-	if [ -d "$runitdir" ] && [ "$dry_run" -eq 0 ] && [ ! -w "$runitdir" ]
+	stage_require_writable remove
+	stage_load_manifest
+	if [ -z "$manifest" ]
 	then
-		die 13 "Cannot remove the runit stages: $runitdir is not writable by $(id -un).
-Re-run as its owner."
+		echo "sv-helper has installed nothing in $runitdir"
+		return 0
 	fi
-	for stage in $sv_stages
+
+	for name in $(stage_recorded_names)
 	do
-		stage_remove_file "$stage_dir/$stage" "$runitdir/$stage"
+		dest=$runitdir/$name
+		current=$(stage_current "$name")
+		recorded=$(stage_recorded "$name")
+		if [ "$current" = dir ]
+		then
+			warn "skipping $dest: it is a directory now"
+			continue
+		fi
+		if [ -n "$current" ]
+		then
+			if [ "$current" != "$recorded" ] && [ "$force" -eq 0 ]
+			then
+				warn "skipping $dest: changed since sv-helper installed it (--force removes it anyway)"
+				continue
+			fi
+			stage_run rm -f "$dest"
+			echo "removed   $dest"
+		fi
+		if [ -e "$displaced/$name" ] || [ -L "$displaced/$name" ]
+		then
+			stage_run mv "$displaced/$name" "$dest"
+			echo "restored  $dest"
+		fi
+		stage_forget "$name"
+		stage_save_manifest
 	done
-	for control in $sv_controls
-	do
-		stage_remove_link "$sv_control_dir/$control" "$runitdir/$control"
-	done
+
+	# Only once it is empty; anything left in it is still someone's.
+	if [ "$dry_run" -eq 0 ] && [ -d "$displaced" ]
+	then
+		rmdir "$displaced" 2>/dev/null || warn "kept $displaced: it still holds files"
+	fi
+	return 0
 }
 
 # install-stages and uninstall-stages, with their own options. PREFIX has
@@ -664,6 +826,15 @@ stages_command() {
 		esac
 	done
 	runitdir="$destdir$runit_dir"
+	manifest_file=$runitdir/$stage_manifest_name
+	displaced=$runitdir/$stage_displaced_name
+
+	# Removing needs only the manifest, never the stages themselves.
+	if [ "$action" = uninstall-stages ]
+	then
+		uninstall_stages
+		return 0
+	fi
 
 	if [ -n "$SV_STAGE_DIR" ] && ! sv_has_stages "$SV_STAGE_DIR"
 	then
@@ -672,25 +843,15 @@ stages_command() {
 	stage_dir=$(sv_stage_dir)
 	if [ -z "$stage_dir" ]
 	then
-		# Removing with --force needs nothing to compare against.
-		if [ "$action" = uninstall-stages ] && [ "$force" -eq 1 ]
-		then
-			stage_dir=/nonexistent
-		else
-			die 127 "No runit stages found. Looked in:
+		die 127 "No runit stages found. Looked in:
 $(sv_stage_dirs | sed 's/^/  /')
 Set SV_STAGE_DIR to the directory holding 1, 2, 3 and ctrlaltdel."
-		fi
 	fi
 	if [ -d "$runitdir" ] && [ "$(cd "$runitdir" && pwd -P)" = "$stage_dir" ]
 	then
 		die 1 "$runitdir is where the stages would come from, not somewhere to put them."
 	fi
-
-	case "$action" in
-	install-stages) install_stages ;;
-	uninstall-stages) uninstall_stages ;;
-	esac
+	install_stages
 }
 
 # GNU style: the package alone when called by its own name, and the alias
