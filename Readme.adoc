@@ -98,9 +98,11 @@ $ ./install.sh uninstall
 ----
 
 It installs `sv-helper`, `rsvlog` and `runsvdir.sh`, plus the command
-links below. Running it again over an identical tree is fine. A file it
-did not write is reported rather than replaced, and `uninstall` takes
-back only its own files and leaves everything else alone.
+links below, and the container stages as inert data for
+`sv-helper install-stages` (see <<_containers,Containers>>). Running it
+again over an identical tree is fine. A file it did not write is
+reported rather than replaced, and `uninstall` takes back only its own
+files and leaves everything else alone.
 
 `PREFIX` is where the files will live when they run. `DESTDIR` is a
 staging root used only at install time, for package builds:
@@ -194,6 +196,7 @@ SVDIR=...          # the enabled tree to supervise and act on
 SV_SOURCE_DIR=...  # where to look for service definitions
 SV_LOG_BASE=...    # where per-service logs go
 SV_ROOT=...        # for runsvdir.sh: pick $SV_ROOT/service/<tree> by hostname
+SV_STAGE_DIR=...   # where install-stages takes the runit stages from
 ----
 
 === macOS
@@ -227,6 +230,8 @@ An explicit `SVDIR` is always what gets supervised. With `SV_ROOT` set
 instead, it picks `$SV_ROOT/service/<tree>` by hostname: `$HOSTNAME`,
 then the hostname with one trailing `-component` removed, then two, each
 optionally prefixed with `$SV_PREFIX`, falling back to `generic`.
+`runsvdir.sh --print-svdir` prints the tree it would choose, and changes
+nothing.
 
 == Logging: rsvlog
 
@@ -283,14 +288,19 @@ log layout is never moved out from under the logs already in it.
 
 `etc/runit/{1,2,3}` are a complete runit lifecycle for a container,
 running as root or as a regular user, with `runsvdir.sh` as stage 2: the
-same script a regular user runs on a host. Installing them is a separate,
-explicit step, because dropping files into `/etc/runit` changes how the
-machine boots:
+same script a regular user runs on a host. Installing sv-helper puts them
+beside it as data. Putting them live is a separate, explicit step,
+because dropping files into `/etc/runit` changes how the machine boots:
 
 [source,bash]
 ----
-$ ./install.sh install-stages
+$ sv-helper install-stages
+$ sv-helper uninstall-stages
 ----
+
+Stage 2 records the tree it supervises, and stage 3 and `sv-helper` use
+that record rather than working the tree out again, so all three always
+agree on it.
 
 See link:container/Readme.md[container/Readme.md] for working
 `Containerfile`s for both, how stopping works, and what to expect when a

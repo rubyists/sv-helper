@@ -4,13 +4,16 @@
 
 # Run a command as this user would, with a HOME of our choosing and every
 # variable sv-helper reads cleared, so a test never inherits one from the
-# shell that started it.
+# shell that started it. The stage 2 record is pointed somewhere empty
+# rather than cleared, so a record on the machine running the suite is
+# never read either; a test wanting one passes its own after this.
 as_user() {
 	local home="$1"
 	shift
 	env -u SVDIR -u SV_ROOT -u SV_SOURCE_DIR -u SV_LOG_BASE -u SV_PREFIX \
+		-u SV_STAGE_DIR -u SV_RUNIT_STAGE \
 		-u XDG_CONFIG_HOME -u XDG_STATE_HOME -u HOMEBREW_PREFIX \
-		"HOME=$home" "$@"
+		"HOME=$home" "SV_SVDIR_RECORD=$home/.no-stage-2-record" "$@"
 }
 
 brew_prefix() {

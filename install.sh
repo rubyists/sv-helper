@@ -10,8 +10,9 @@
 #   ./install.sh                      install under the default prefix
 #   ./install.sh install --prefix ~/.local
 #   ./install.sh uninstall            remove exactly what install put there
-#   ./install.sh install-stages       put runit stages 1/2/3 in /etc/runit
-#   ./install.sh uninstall-stages
+#
+# The runit stages for a container are installed by the installed
+# sv-helper, not by this script: `sv-helper install-stages`.
 #
 # PREFIX is where the files will live when they run. DESTDIR is a staging
 # root prepended at install time only, for package builds; nothing resolves
@@ -27,13 +28,10 @@ COMMANDS="sv-helper rsvlog runsvdir.sh"
 # Alias links, all pointing at sv-helper.
 ALIASES="sv-start sv-stop sv-restart sv-list svls sv-enable sv-disable sv-find"
 DOCS="Readme.adoc COPYING CHANGELOG.md"
+# The runit stages for a container, installed as sv-helper's own data for
+# `sv-helper install-stages` to copy into /etc/runit. Nothing boots from
+# where this puts them.
 STAGES="1 2 3 ctrlaltdel"
-# runit decides whether to stop, and how, by the mode of these two files,
-# and chmods stopit itself. Linking them into /run/runit, as Void does,
-# keeps them writable by whatever UID the container runs as, and /etc/runit
-# never has to be.
-CONTROLS="stopit reboot"
-CONTROL_DIR=/run/runit
 
 FORCE=0
 DRY_RUN=0
@@ -63,9 +61,6 @@ Usage: $PROG [COMMAND] [OPTIONS]
 Commands:
   install            Install the scripts and command links (default)
   uninstall          Remove the files and links install created
-  install-stages     Install runit stages 1, 2 and 3 for a container, and
-                     link its stopit and reboot files into $CONTROL_DIR
-  uninstall-stages   Remove those stages
   help               Show this message
 
 Options:
@@ -73,9 +68,10 @@ Options:
   --destdir DIR      Staging root, prepended at install time only
   --bindir DIR       Override PREFIX/bin
   --docdir DIR       Override PREFIX/share/doc/sv-helper
-  --runit-dir DIR    Where the stages go (default: /etc/runit)
   --force            Replace files and links this installer did not create
   --dry-run          Print what would happen, change nothing
+
+The runit stages for a container: sv-helper install-stages -h
 USAGE
 }
 
@@ -119,6 +115,12 @@ doc_source_for() {
 		fi
 	done
 	return 1
+}
+
+stage_source_for() {
+	stage=$1
+	[ -f "$SRC/etc/runit/$stage" ] || return 1
+	printf '%s\n' "$SRC/etc/runit/$stage"
 }
 
 # A destination is safe to write when it is absent, or already exactly what
@@ -242,6 +244,14 @@ do_install() {
 		install_file "$src" "$DOC/$name" 0644
 	done
 
+	ensure_dir "$STAGEDIR"
+	require_writable "$STAGEDIR"
+	for stage in $STAGES
+	do
+		src=$(stage_source_for "$stage") || die "Could not find runit stage $stage in $SRC"
+		install_file "$src" "$STAGEDIR/$stage" 0755
+	done
+
 	echo
 	echo "sv-helper installed in $BIN"
 	case ":$PATH:" in
@@ -268,59 +278,31 @@ do_uninstall() {
 		remove_file "$src" "$DOC/$name"
 	done
 
-	# Only if we emptied it; a docdir someone else also uses stays.
-	[ -d "$DOC" ] && rmdir "$DOC" 2>/dev/null && echo "removed   $DOC"
-	return 0
-}
-
-stage_source_for() {
-	stage=$1
-	for candidate in "$SRC/etc/runit/$stage" "$SRC/runit/$stage"
-	do
-		if [ -f "$candidate" ]
-		then
-			printf '%s\n' "$candidate"
-			return 0
-		fi
-	done
-	return 1
-}
-
-do_install_stages() {
-	ensure_dir "$RUNITDIR"
-	require_writable "$RUNITDIR"
-	for stage in $STAGES
-	do
-		src=$(stage_source_for "$stage") || die "Could not find runit stage $stage in $SRC"
-		install_file "$src" "$RUNITDIR/$stage" 0755
-	done
-	for control in $CONTROLS
-	do
-		install_link "$CONTROL_DIR/$control" "$RUNITDIR/$control"
-	done
-	echo
-	echo "runit stages installed in $RUNITDIR"
-}
-
-do_uninstall_stages() {
 	for stage in $STAGES
 	do
 		src=$(stage_source_for "$stage") || src=
-		remove_file "$src" "$RUNITDIR/$stage"
+		remove_file "$src" "$STAGEDIR/$stage"
 	done
-	for control in $CONTROLS
+
+	# Only if we emptied them; a directory someone else also uses stays.
+	for dir in "$DOC" "$STAGEDIR" "$(dirname "$STAGEDIR")"
 	do
-		remove_link "$CONTROL_DIR/$control" "$RUNITDIR/$control"
+		[ -d "$dir" ] && rmdir "$dir" 2>/dev/null && echo "removed   $dir"
 	done
+	return 0
 }
 
 SRC=$(source_dir)
 
 command=install
 case "${1:-}" in
-install | uninstall | install-stages | uninstall-stages)
+install | uninstall)
 	command=$1
 	shift
+	;;
+install-stages | uninstall-stages)
+	die "$1 moved into sv-helper itself, so it works after sv-helper is installed.
+Install sv-helper, then run: sv-helper $1"
 	;;
 help | -h | --help)
 	usage
@@ -350,10 +332,6 @@ do
 		DOCDIR=$2
 		shift 2
 		;;
-	--runit-dir)
-		RUNIT_DIR=$2
-		shift 2
-		;;
 	--force)
 		FORCE=1
 		shift
@@ -373,17 +351,16 @@ done
 PREFIX=${PREFIX:-$(default_prefix)}
 BINDIR=${BINDIR:-$PREFIX/bin}
 DOCDIR=${DOCDIR:-$PREFIX/share/doc/sv-helper}
-RUNIT_DIR=${RUNIT_DIR:-/etc/runit}
 
 BIN="$DESTDIR$BINDIR"
 DOC="$DESTDIR$DOCDIR"
-RUNITDIR="$DESTDIR$RUNIT_DIR"
+# Beside BINDIR, not under PREFIX: the installed sv-helper looks for its
+# stages relative to where it is, so a --bindir of its own still finds them.
+STAGEDIR="$DESTDIR$(dirname "$BINDIR")/share/sv-helper/runit"
 
 case "$command" in
 install) do_install ;;
 uninstall) do_uninstall ;;
-install-stages) do_install_stages ;;
-uninstall-stages) do_uninstall_stages ;;
 esac
 
 # vim: set noet ts=8 sw=8 sts=8

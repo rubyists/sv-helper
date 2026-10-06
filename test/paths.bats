@@ -101,3 +101,93 @@ STUB
     assert_success
     assert_output --partial "STUB-SVDIR=$(expected_svdir "$HOME_DIR")"
 }
+
+# A stub runsvdir at the front of PATH, which reports the tree it was
+# handed and whether SV_RUNIT_STAGE reached it, then exits.
+stub_runsvdir() {
+    mkdir -p "$TEST_TMP/stub"
+    cat > "$TEST_TMP/stub/runsvdir" <<'STUB'
+#!/bin/sh
+echo "STUB-SVDIR=$2"
+echo "STUB-STAGE=${SV_RUNIT_STAGE:-unset}"
+STUB
+    chmod +x "$TEST_TMP/stub/runsvdir"
+}
+
+@test "runsvdir.sh --print-svdir prints the tree it would supervise, and changes nothing" {
+    run --separate-stderr as_user "$HOME_DIR" "$REPO_ROOT/runsvdir.sh" --print-svdir
+    assert_success
+    assert_output "$(expected_svdir "$HOME_DIR")"
+    # Not even the tree it would have created.
+    refute [ -e "$HOME_DIR/.local" ]
+}
+
+@test "runsvdir.sh --print-svdir picks by hostname, with nothing but the answer on stdout" {
+    mkdir -p "$TEST_TMP/app/service/web"
+    run --separate-stderr as_user "$HOME_DIR" env "SV_ROOT=$TEST_TMP/app" HOSTNAME=web-7f9c4-x2k \
+        "$REPO_ROOT/runsvdir.sh" --print-svdir
+    assert_success
+    assert_output "$TEST_TMP/app/service/web"
+}
+
+@test "as stage 2, runsvdir.sh records the tree it chose" {
+    stub_runsvdir
+    mkdir -p "$TEST_TMP/app/service/web"
+
+    run as_user "$HOME_DIR" env "PATH=$TEST_TMP/stub:$PATH" SV_RUNIT_STAGE=2 \
+        "SV_SVDIR_RECORD=$TEST_TMP/svdir" "SV_ROOT=$TEST_TMP/app" HOSTNAME=web-7f9c4-x2k \
+        "$REPO_ROOT/runsvdir.sh"
+    assert_success
+    assert_equal "$(cat "$TEST_TMP/svdir")" "$TEST_TMP/app/service/web"
+    # A service has no business knowing which stage started it.
+    assert_output --partial "STUB-STAGE=unset"
+}
+
+@test "outside stage 2, runsvdir.sh records nothing" {
+    stub_runsvdir
+    run as_user "$HOME_DIR" env "PATH=$TEST_TMP/stub:$PATH" \
+        "SV_SVDIR_RECORD=$TEST_TMP/svdir" "$REPO_ROOT/runsvdir.sh"
+    assert_success
+    refute [ -e "$TEST_TMP/svdir" ]
+}
+
+@test "sv-helper manages the tree stage 2 recorded" {
+    # The case nothing else would get right: a tree chosen by SV_ROOT and
+    # hostname, which sv-helper has no way to choose for itself.
+    mkdir -p "$TEST_TMP/app/service/web"
+    printf '%s\n' "$TEST_TMP/app/service/web" > "$TEST_TMP/svdir"
+
+    run as_user "$HOME_DIR" env "SV_SVDIR_RECORD=$TEST_TMP/svdir" "$SVHELPER" paths
+    assert_success
+    assert_line "svdir:        $TEST_TMP/app/service/web"
+}
+
+@test "an explicit SVDIR still beats the record" {
+    mkdir -p "$TEST_TMP/app/service/web" "$TEST_TMP/explicit"
+    printf '%s\n' "$TEST_TMP/app/service/web" > "$TEST_TMP/svdir"
+
+    run as_user "$HOME_DIR" env "SV_SVDIR_RECORD=$TEST_TMP/svdir" "SVDIR=$TEST_TMP/explicit" "$SVHELPER" paths
+    assert_line "svdir:        $TEST_TMP/explicit"
+}
+
+@test "a record naming a tree that is gone is ignored" {
+    printf '%s\n' "$TEST_TMP/gone" > "$TEST_TMP/svdir"
+    run as_user "$HOME_DIR" env "SV_SVDIR_RECORD=$TEST_TMP/svdir" "$SVHELPER" paths
+    assert_line "svdir:        $(expected_svdir "$HOME_DIR")"
+}
+
+@test "someone else's record is ignored" {
+    # A record naming a real tree, which a stub stat says belongs to
+    # another UID: stage 2 ran as someone else, so it is not this user's
+    # tree to manage.
+    mkdir -p "$TEST_TMP/app/service/web" "$TEST_TMP/stub"
+    printf '%s\n' "$TEST_TMP/app/service/web" > "$TEST_TMP/svdir"
+    cat > "$TEST_TMP/stub/stat" <<STUB
+#!/bin/sh
+echo $(($(id -u) + 1))
+STUB
+    chmod +x "$TEST_TMP/stub/stat"
+
+    run as_user "$HOME_DIR" env "PATH=$TEST_TMP/stub:$PATH" "SV_SVDIR_RECORD=$TEST_TMP/svdir" "$SVHELPER" paths
+    assert_line "svdir:        $(expected_svdir "$HOME_DIR")"
+}

@@ -45,14 +45,19 @@ do
 	[ -w "$dir" ] || fatal "$dir is not writable by uid $uid, the image has to give it to this user"
 done
 
+# The tree stage 2 recorded last time. /run survives a restart under some
+# runtimes, and if stage 2 never starts this time, stage 3 must not go and
+# stop a tree from the previous boot.
+rm -f "${SV_SVDIR_RECORD:-/run/runit/svdir}"
+
 # runit only shuts down when it gets CONT and finds /etc/runit/stopit
 # executable. Create both control files unarmed (mode 0) so a stray signal
 # cannot stop the container and so ctrlaltdel only has to chmod them.
 #
-# install-stages links both into /run/runit, so this follows the link and
-# creates them there, owned by whoever this is. A container that cannot
-# arm stopit cannot be stopped without being killed, which is worth
-# refusing to boot over.
+# sv-helper install-stages links both into /run/runit, so this follows
+# the link and creates them there, owned by whoever this is. A container
+# that cannot arm stopit cannot be stopped without being killed, which is
+# worth refusing to boot over.
 for control in stopit reboot
 do
 	file=/etc/runit/$control
@@ -61,7 +66,7 @@ do
 		: >"$file" 2>/dev/null || fatal "could not create $file as uid $uid"
 	fi
 	chmod 0 "$file" 2>/dev/null ||
-		fatal "$file is not ours to change as uid $uid, so link it into /run/runit (install-stages does)"
+		fatal "$file is not ours to change as uid $uid, so link it into /run/runit (sv-helper install-stages does)"
 done
 
 # Without this, a crash in a service's own `run` script is reported against

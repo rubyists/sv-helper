@@ -18,42 +18,41 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 export PATH
 
 timeout=${SV_STOP_TIMEOUT:-25}
+record=${SV_SVDIR_RECORD:-/run/runit/svdir}
 
 msg() {
 	echo "stage 3: $*"
 }
 
-# The tree stage 2 supervised, found the way runsvdir.sh found it: an
-# explicit SVDIR, then the invoking user's default. A regular user's tree
-# is the same one it would supervise on a host, never a system tree.
+# The tree stage 2 supervised, which this never works out for itself: a
+# second copy of that decision is a copy that can disagree, and stopping
+# the wrong tree looks exactly like stopping the right one until the
+# runtime kills the container. runsvdir.sh records the tree as stage 2
+# starts it. Without a record - stage 2 never got that far, or
+# /etc/runit/2 is not runsvdir.sh - runsvdir.sh is asked which tree it
+# would choose, which is still the one piece of code that decides.
 find_svdir() {
-	if [ -n "$SVDIR" ] && [ -d "$SVDIR" ]
+	if [ -r "$record" ] && IFS= read -r svdir <"$record" && [ -d "$svdir" ]
 	then
-		printf '%s\n' "$SVDIR"
+		svdir_from="recorded by stage 2"
 		return 0
 	fi
-	if [ "$(id -u)" -ne 0 ]
-	then
-		dir=${XDG_STATE_HOME:-$HOME/.local/state}/sv-helper/service
-		[ -d "$dir" ] || return 1
-		printf '%s\n' "$dir"
-		return 0
-	fi
-	for dir in /service /var/service /etc/service
+	for candidate in runsvdir.sh /usr/local/bin/runsvdir.sh /usr/bin/runsvdir.sh
 	do
-		if [ -d "$dir" ]
-		then
-			printf '%s\n' "$dir"
-			return 0
-		fi
+		command -v "$candidate" >/dev/null 2>&1 || continue
+		svdir=$("$candidate" --print-svdir) || return 1
+		[ -d "$svdir" ] || return 1
+		svdir_from="no record, so as runsvdir.sh resolves it"
+		return 0
 	done
 	return 1
 }
 
-svdir=$(find_svdir) || {
+if ! find_svdir
+then
 	msg "no service directory found; nothing to stop"
 	exit 0
-}
+fi
 
 services=""
 for service in "$svdir"/*
@@ -64,9 +63,9 @@ done
 
 if [ -z "$services" ]
 then
-	msg "no services in $svdir"
+	msg "no services in $svdir ($svdir_from)"
 else
-	msg "stopping services in $svdir (timeout ${timeout}s)"
+	msg "stopping services in $svdir ($svdir_from, timeout ${timeout}s)"
 	# shellcheck disable=SC2086  # each service is a separate argument
 	sv -w "$timeout" force-stop $services || msg "some services did not stop cleanly"
 

@@ -68,7 +68,8 @@ Then:
 
 1. runit terminates stage 2. `runsvdir` exits immediately on `TERM` and
    leaves its `runsv` children running, now reparented to runit.
-2. Stage 3 stops them, in two passes. `sv force-stop` takes each service
+2. Stage 3 stops them, in two passes, in the tree stage 2 recorded in
+   `/run/runit/svdir` as it started (see [Which tree](#which-tree)). `sv force-stop` takes each service
    down, killing anything that will not go. `sv shutdown` then makes each
    `runsv` exit, which closes its log service's stdin and waits for the
    logger to drain and terminate — without that second pass, the last
@@ -81,8 +82,8 @@ Then:
 Deliberately separate from installing the commands, because dropping
 files into `/etc/runit` changes how the machine boots:
 
-    ./install.sh install            # the commands
-    ./install.sh install-stages     # stages 1, 2, 3 and ctrlaltdel
+    ./install.sh install            # the commands, and the stages as data
+    sv-helper install-stages        # stages 1, 2, 3 and ctrlaltdel, live
 
 It also links `/etc/runit/stopit` and `/etc/runit/reboot` to
 `/run/runit/stopit` and `/run/runit/reboot`, the same layout Void uses.
@@ -90,13 +91,36 @@ runit reads both and chmods `stopit` itself, so they have to belong to
 whoever runit runs as, and `/etc/runit` does not have to be writable.
 
 `--runit-dir` moves them if your runit package uses another path, and
-`--destdir` stages them for a package build. `install.sh` refuses to
-overwrite a stage file it did not write, so it will not quietly replace
-a distribution's own.
+`--destdir` stages them for a package build. `--dry-run` shows what
+either command would do. `install-stages` refuses to overwrite a stage
+file it did not write, so it will not quietly replace a distribution's
+own, and `uninstall-stages` removes only what it put there.
+
+`install.sh` puts the stages in `share/sv-helper/runit` beside the
+commands, where they do nothing, so an installed sv-helper always has
+them to hand. `sv-helper paths` shows which copy it would use, and
+`SV_STAGE_DIR` points it at another.
 
 Stage 2 is a thin wrapper that finds and execs `runsvdir.sh`, so it holds
 no policy of its own; a symlink from `/etc/runit/2` to an installed
 `runsvdir.sh` works just as well.
+
+### Which tree
+
+Exactly one piece of code decides which tree is supervised:
+`runsvdir.sh`, from `SVDIR`, `SV_ROOT` and the hostname, or the user's
+default. Nothing else works it out a second time, because a second copy
+of that decision is a copy that can disagree — and stopping the wrong
+tree looks just like stopping the right one, until the runtime kills
+the container.
+
+As stage 2, `runsvdir.sh` writes the tree it chose to
+`/run/runit/svdir`. Stage 3 stops that tree, and `sv-helper` manages it
+when run as the same user, so `svls` in a container selected by
+hostname shows the services actually running. Without a record, stage
+3 asks `runsvdir.sh --print-svdir`, which makes the same decision and
+changes nothing. Stage 1 clears the record at boot, so a container
+whose stage 2 never starts does not go and stop last boot's tree.
 
 ## Services
 
@@ -144,7 +168,7 @@ cannot create anything outside the user's home without privilege it
 should not have:
 
 - `/run/runit` exists and belongs to the user.
-- `install-stages` links runit's control files there (see
+- `sv-helper install-stages` links runit's control files there (see
   [Installing the stages](#installing-the-stages)).
 - `HOME` is set in the image, not left to the runtime.
 
